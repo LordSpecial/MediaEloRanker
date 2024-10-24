@@ -10,6 +10,7 @@ import { RankPage } from './components/pages/Pages';
 import { LibraryPage } from './components/pages/Pages';
 import Navbar from './components/ui/Navbar';
 import { useAuth } from './hooks/useAuth';
+import {MovieExplorePage} from "./components/media/MovieExplorePage.tsx";
 
 // Simple loading component
 const Loading = () => <div>Loading...</div>;
@@ -77,6 +78,14 @@ const App = () => {
                         element={
                             <ProtectedRoute>
                                 <DiscoverPage />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/explore/movies"
+                        element={
+                            <ProtectedRoute>
+                                <MovieExplorePage />
                             </ProtectedRoute>
                         }
                     />

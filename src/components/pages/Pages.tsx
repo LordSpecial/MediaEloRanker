@@ -3,9 +3,12 @@ import { updateProfile } from 'firebase/auth';
 import { auth } from '../../firebase';
 import { useAuth } from '../../hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { User, Settings, Library, Star, Clock, LogOut } from 'lucide-react';
+import { User, Star, Clock, LogOut } from 'lucide-react';
 import { MediaCarousel, generateMockMediaItems } from '../media/MediaComponents';
 import {useNavigate} from "react-router-dom";
+import {useMovies} from "../../hooks/tmdb/useMovies.ts";
+import {formatMediaItem} from "../../services/utils/mediaUtils.ts";
+import {useTV} from "../../hooks/tmdb/useTV.ts";
 
 // Home Page
 export const HomePage = () => {
@@ -49,11 +52,23 @@ export const HomePage = () => {
 // Discover Page
 export const DiscoverPage = () => {
     const navigate = useNavigate();
+    const { movies: trendingMovies, loading: moviesLoading } = useMovies('trending', { timeWindow: 'week' });
+    const { shows: trendingTV, loading: tvLoading } = useTV('trending', { timeWindow: 'week' });
 
     const categories = [
-        { title: 'Trending Movies', type: 'movies', items: generateMockMediaItems(10) },
-        { title: 'Popular TV Shows', type: 'tv', items: generateMockMediaItems(10) },
-        { title: 'Top Anime', type: 'anime', items: generateMockMediaItems(10) },
+        {
+            title: 'Trending Movies',
+            type: 'movies',
+            items: trendingMovies.map(formatMediaItem),
+            loading: moviesLoading
+        },
+        {
+            title: 'Trending TV Shows',
+            type: 'tv',
+            items: trendingTV.map(formatMediaItem),
+            loading: tvLoading
+        },
+        { title: 'Popular Anime', type: 'anime', items: generateMockMediaItems(10) },
         { title: 'Hot Albums', type: 'music', items: generateMockMediaItems(10) }
     ];
 
@@ -68,6 +83,7 @@ export const DiscoverPage = () => {
                         title={category.title}
                         items={category.items}
                         onExplore={() => navigate(`/explore/${category.type}`)}
+                        loading={category.loading}
                     />
                 ))}
             </div>

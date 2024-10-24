@@ -1,23 +1,32 @@
 import React from 'react';
-import { Card, CardContent } from '../ui/card.tsx';
+import { Card, CardContent } from '../ui/card';
 import { Compass } from 'lucide-react';
+import { Skeleton } from '../ui/skeleton';
 
 interface MediaCardProps {
+    id: number;
     title: string;
-    imageId: number;
+    imageUrl: string | null;
     rating: string;
     year: number;
 }
 
-export const MediaCard: React.FC<MediaCardProps> = ({ title, imageId, rating, year }) => (
+export const MediaCard: React.FC<MediaCardProps> = ({ title, imageUrl, rating, year }) => (
     <div className="flex-shrink-0 w-48 mr-4">
         <Card className="h-72 overflow-hidden hover:ring-2 hover:ring-blue-500 transition-all cursor-pointer">
             <div className="h-48 bg-gray-800 relative">
-                <img
-                    src={`/api/placeholder/${200}/${250}`}
-                    alt={title}
-                    className="w-full h-full object-cover"
-                />
+                {imageUrl ? (
+                    <img
+                        src={imageUrl}
+                        alt={title}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                    />
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                        <span className="text-gray-600">No Image</span>
+                    </div>
+                )}
                 <div className="absolute top-2 right-2 bg-gray-900 px-2 py-1 rounded-md text-sm">
                     ★ {rating}
                 </div>
@@ -30,13 +39,28 @@ export const MediaCard: React.FC<MediaCardProps> = ({ title, imageId, rating, ye
     </div>
 );
 
+export const MediaCardSkeleton = () => (
+    <div className="flex-shrink-0 w-48 mr-4">
+        <Card className="h-72 overflow-hidden">
+            <div className="h-48 bg-gray-800">
+                <Skeleton className="w-full h-full" />
+            </div>
+            <CardContent className="p-3">
+                <Skeleton className="h-4 w-3/4 mb-2" />
+                <Skeleton className="h-3 w-1/2" />
+            </CardContent>
+        </Card>
+    </div>
+);
+
 interface MediaCarouselProps {
     title: string;
     items: MediaCardProps[];
     onExplore: () => void;
+    loading?: boolean;
 }
 
-export const MediaCarousel: React.FC<MediaCarouselProps> = ({ title, items, onExplore }) => (
+export const MediaCarousel: React.FC<MediaCarouselProps> = ({ title, items, onExplore, loading = false }) => (
     <div className="mb-8">
         <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-bold text-white">{title}</h2>
@@ -48,9 +72,13 @@ export const MediaCarousel: React.FC<MediaCarouselProps> = ({ title, items, onEx
             </button>
         </div>
         <div className="flex overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-800">
-            {items.map((item, index) => (
-                <MediaCard key={index} {...item} />
-            ))}
+            {loading ? (
+                Array(5).fill(0).map((_, i) => <MediaCardSkeleton key={i} />)
+            ) : (
+                items.map((item, index) => (
+                    <MediaCard key={item.id || index} {...item} />
+                ))
+            )}
         </div>
     </div>
 );
