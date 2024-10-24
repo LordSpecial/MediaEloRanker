@@ -1,11 +1,13 @@
-import React, {useEffect, useState} from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, Compass, Shuffle, TrendingUp, Star } from 'lucide-react';
 import { MediaCard } from './MediaComponents';
-import { useMovies, useSearch } from '../../hooks/tmdb';
+import { useTV } from '../../hooks/tmdb/useTV';
+import { useSearch } from '../../hooks/tmdb/useSearch';
+import {TMDBTVShow} from "../../services/api/tmdb/types.ts";
 
 const CategoryTab: React.FC<{
     icon: React.ElementType;
@@ -26,18 +28,18 @@ const CategoryTab: React.FC<{
     </Card>
 );
 
-export const MovieExplorePage: React.FC = () => {
+export const TVExplorePage: React.FC = () => {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<'popular' | 'top_rated' | 'trending' | 'random'>('popular');
 
     const {
-        movies,
-        loading: moviesLoading,
-        error: moviesError,
+        shows,
+        loading: showsLoading,
+        error: showsError,
         hasMore,
         loadMore,
-        getRandomMovies // New function we'll add to useMovies
-    } = useMovies(activeTab);
+        getRandomShows
+    } = useTV(activeTab);
 
     const {
         query,
@@ -45,16 +47,16 @@ export const MovieExplorePage: React.FC = () => {
         loading: searchLoading,
         error: searchError,
         setQuery
-    } = useSearch({ autoSearch: true });
+    } = useSearch({ autoSearch: true, mediaType: 'tv' });
 
-    const isLoading = searchLoading || (moviesLoading && !movies.length);
-    const error = searchError || moviesError;
-    const displayedMovies = query ? searchResults : movies;
+    const isLoading = searchLoading || (showsLoading && !shows.length);
+    const error = searchError || showsError;
+    const displayedShows = query ? searchResults : shows;
 
     const handleTabChange = async (newTab: typeof activeTab) => {
         setActiveTab(newTab);
         if (newTab === 'random') {
-            await getRandomMovies();
+            await getRandomShows();
         }
     };
 
@@ -62,7 +64,7 @@ export const MovieExplorePage: React.FC = () => {
         <div className="min-h-screen bg-gray-900 pt-20 px-4">
             <div className="max-w-7xl mx-auto">
                 <div className="flex items-center justify-between mb-8">
-                    <h1 className="text-4xl font-bold text-white">Movies</h1>
+                    <h1 className="text-4xl font-bold text-white">TV Shows</h1>
                     <Button
                         variant="ghost"
                         onClick={() => navigate('/discover')}
@@ -78,22 +80,22 @@ export const MovieExplorePage: React.FC = () => {
                         type="text"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Search movies..."
+                        placeholder="Search TV shows..."
                         className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white pl-12"
                     />
-                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"/>
+                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 </div>
 
                 {/* Category Tabs */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                     {[
-                        {icon: TrendingUp, label: 'Trending', value: 'trending'},
-                        {icon: Star, label: 'Top Rated', value: 'top_rated'},
-                        {icon: Shuffle, label: 'Random', value: 'random'}
-                    ].map(({icon: Icon, label, value}) => (
+                        { icon: TrendingUp, label: 'Trending', value: 'trending' },
+                        { icon: Star, label: 'Top Rated', value: 'top_rated' },
+                        { icon: Shuffle, label: 'Random', value: 'random' }
+                    ].map(({ icon, label, value }) => (
                         <CategoryTab
                             key={value}
-                            icon={Icon}
+                            icon={icon}
                             label={label}
                             active={activeTab === value}
                             onClick={() => handleTabChange(value as typeof activeTab)}
@@ -101,37 +103,23 @@ export const MovieExplorePage: React.FC = () => {
                     ))}
                 </div>
 
-                {/* Loading State */}
-                {isLoading && (
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                        {Array(10).fill(0).map((_, i) => (
-                            <Card key={i} className="h-72 animate-pulse bg-gray-800"/>
-                        ))}
-                    </div>
-                )}
-
-                {/* Error State */}
-                {error && (
-                    <div className="text-red-400 text-center py-8">
-                        {error}
-                    </div>
-                )}
-
                 {/* Content */}
                 {!isLoading && !error && (
                     <>
                         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                            {displayedMovies.map((movie) => (
-                                <MediaCard
-                                    key={movie.id}
-                                    id={movie.id}
-                                    title={movie.title}
-                                    imageUrl={movie.poster_path ? `${import.meta.env.VITE_TMDB_IMAGE_BASE_URL}/w500${movie.poster_path}` : null}
-                                    rating={(movie.vote_average / 2).toFixed(1)}
-                                    year={new Date(movie.release_date).getFullYear()}
-                                    mediaType="film"
-                                />
-                            ))}
+                            {displayedShows
+                                .filter((show): show is TMDBTVShow => (show as TMDBTVShow).first_air_date !== undefined) // Type guard to filter TV shows
+                                .map((show) => (
+                                    <MediaCard
+                                        key={show.id}
+                                        id={show.id}
+                                        title={show.name}
+                                        imageUrl={show.poster_path ? `${import.meta.env.VITE_TMDB_IMAGE_BASE_URL}/w500${show.poster_path}` : null}
+                                        rating={(show.vote_average / 2).toFixed(1)}
+                                        year={new Date(show.first_air_date).getFullYear()}
+                                        mediaType="tv"
+                                    />
+                                ))}
                         </div>
 
                         {/* Load More Button */}
@@ -139,14 +127,13 @@ export const MovieExplorePage: React.FC = () => {
                             <div className="flex justify-center my-8">
                                 <Button
                                     onClick={loadMore}
-                                    disabled={moviesLoading}
+                                    disabled={showsLoading}
                                     className="bg-blue-600 hover:bg-blue-700"
                                 >
-                                    {moviesLoading ? (
+                                    {showsLoading ? (
                                         <div className="flex items-center">
                                             <span className="mr-2">Loading</span>
-                                            <div
-                                                className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"/>
+                                            <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
                                         </div>
                                     ) : (
                                         'Load More'
@@ -157,11 +144,11 @@ export const MovieExplorePage: React.FC = () => {
                     </>
                 )}
 
-                {/* Loading States */}
+                {/* Loading State */}
                 {isLoading && (
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                         {Array(10).fill(0).map((_, i) => (
-                            <Card key={i} className="h-72 animate-pulse bg-gray-800"/>
+                            <Card key={i} className="h-72 animate-pulse bg-gray-800" />
                         ))}
                     </div>
                 )}
@@ -174,9 +161,9 @@ export const MovieExplorePage: React.FC = () => {
                 )}
 
                 {/* No Results */}
-                {!isLoading && displayedMovies.length === 0 && (
+                {!isLoading && displayedShows.length === 0 && (
                     <div className="text-center text-gray-400 py-12">
-                        No movies found
+                        No TV shows found
                     </div>
                 )}
             </div>

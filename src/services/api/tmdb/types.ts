@@ -26,9 +26,9 @@ export interface TMDBTVShow {
     original_language: string;
     popularity: number;
     origin_country: string[];
+    number_of_seasons?: number;
+    number_of_episodes?: number;
 }
-
-export type TMDBMediaItem = TMDBMovie | TMDBTVShow;
 
 export interface TMDBResponse<T> {
     page: number;
@@ -38,13 +38,4 @@ export interface TMDBResponse<T> {
 }
 
 export type MovieListCategory = 'now_playing' | 'popular' | 'top_rated' | 'upcoming';
-
-export interface MovieQueryParams {
-    page?: number;
-    language?: string;
-    region?: string;
-}
-
-export interface SearchQueryParams extends MovieQueryParams {
-    query: string;
-}
+export type TVListCategory = 'airing_today' | 'on_the_air' | 'popular' | 'top_rated';
