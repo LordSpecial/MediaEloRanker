@@ -11,6 +11,7 @@ import { LibraryPage } from './components/pages/Pages';
 import Navbar from './components/ui/Navbar';
 import { useAuth } from './hooks/useAuth';
 import {MovieExplorePage} from "./components/media/MovieExplorePage.tsx";
+import {Toaster} from "./components/ui/toaster.tsx";
 
 // Simple loading component
 const Loading = () => <div>Loading...</div>;
@@ -136,6 +137,7 @@ const App = () => {
                         }
                     />
                 </Routes>
+                <Toaster />
             </div>
         </Router>
     );
