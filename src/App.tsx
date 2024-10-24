@@ -2,7 +2,12 @@ import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import Register from './components/auth/Register';
 import Login from './components/auth/Login';
-import Profile from './components/profile/Profile';
+import { ProfilePage } from './components/pages/Pages';
+import { HomePage } from './components/pages/Pages';
+import { DiscoverPage } from './components/pages/Pages';
+import { RankPage } from './components/pages/Pages';
+import { LibraryPage } from './components/pages/Pages';
+import Navbar from './components/ui/Navbar';
 import { useAuth } from './hooks/useAuth';
 
 // Simple loading component
@@ -14,12 +19,16 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
     if (loading) return <Loading />;
 
-    // Check for both user existence and email verification
     if (!user || !user.emailVerified) {
         return <Navigate to="/login" />;
     }
 
-    return <>{children}</>;
+    return (
+        <>
+            <Navbar />
+            {children}
+        </>
+    );
 };
 
 const App = () => {
@@ -29,55 +38,87 @@ const App = () => {
         return <Loading />;
     }
 
-    // Helper function to check if user can access auth pages
     const shouldRedirectToProfile = user && user.emailVerified;
 
     return (
         <Router>
-            <Routes>
-                {/* Public routes */}
-                <Route
-                    path="/login"
-                    element={shouldRedirectToProfile ? <Navigate to="/profile" /> : <Login />}
-                />
-                <Route
-                    path="/register"
-                    element={
-                        // Allow unverified users to stay on register page
-                        user && !user.emailVerified ? (
-                            <Register />
-                        ) : shouldRedirectToProfile ? (
-                            <Navigate to="/profile" />
-                        ) : (
-                            <Register />
-                        )
-                    }
-                />
+            <div className="dark-theme">
+                <Routes>
+                    {/* Public routes */}
+                    <Route
+                        path="/login"
+                        element={shouldRedirectToProfile ? <Navigate to="/home" /> : <Login />}
+                    />
+                    <Route
+                        path="/register"
+                        element={
+                            user && !user.emailVerified ? (
+                                <Register />
+                            ) : shouldRedirectToProfile ? (
+                                <Navigate to="/home" />
+                            ) : (
+                                <Register />
+                            )
+                        }
+                    />
 
-                {/* Protected routes */}
-                <Route
-                    path="/profile"
-                    element={
-                        <ProtectedRoute>
-                            <Profile />
-                        </ProtectedRoute>
-                    }
-                />
+                    {/* Protected routes */}
+                    <Route
+                        path="/home"
+                        element={
+                            <ProtectedRoute>
+                                <HomePage />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/discover"
+                        element={
+                            <ProtectedRoute>
+                                <DiscoverPage />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/rank"
+                        element={
+                            <ProtectedRoute>
+                                <RankPage />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/library"
+                        element={
+                            <ProtectedRoute>
+                                <LibraryPage />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/profile"
+                        element={
+                            <ProtectedRoute>
+                                <ProfilePage />
+                            </ProtectedRoute>
+                        }
+                    />
 
-                {/* Default redirect */}
-                <Route
-                    path="*"
-                    element={
-                        <Navigate to={
-                            shouldRedirectToProfile
-                                ? "/profile"
-                                : user && !user.emailVerified
-                                    ? "/register"  // Keep unverified users on register
-                                    : "/login"
-                        } />
-                    }
-                />
-            </Routes>
+                    {/* Default redirect */}
+                    <Route
+                        path="*"
+                        element={
+                            <Navigate to={
+                                shouldRedirectToProfile
+                                    ? "/home"
+                                    : user && !user.emailVerified
+                                        ? "/register"
+                                        : "/login"
+                            } />
+                        }
+                    />
+                </Routes>
+            </div>
         </Router>
     );
 };
