@@ -1,39 +1,61 @@
-import { useState } from 'react'
-import "../node_modules/bootstrap/dist/css/bootstrap.min.css";
-import './App.css'
-import {
-    BrowserRouter as Router,
-    Routes,
-    Route,
-    Navigate,
-} from "react-router-dom";
+import React from 'react';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import Register from './components/auth/Register';
+import Login from './components/auth/Login';
+import Profile from './components/profile/Profile';
+import { useAuth } from './hooks/useAuth';
 
-function App() {
-    const [user, setUser] = useState();
-    useEffect(() => {
-        auth.onAuthStateChanged((user) => {
-            setUser(user);
-        });
-    });
-  return (
-    <Router>
-        <div className="App">
-            <div className="auth-wrapper">
-                <div className="auth-inner">
-                    <Routes>
-                        <Route
-                            path="/"
-                            element={user ? <Navigate to="/profile" /> : <Login />}
-                        />
-                        <Route path="/login" element={<Login />} />
-                        <Route path="/register" element={<SignUp />} />
-                        <Route path="/profile" element={<Profile />} />
-                    </Routes>
-                </div>
-            </div>
-        </div>
-    </Router>
-  )
-}
+// Simple loading component
+const Loading = () => <div>Loading...</div>;
 
-export default App
+// Protected route wrapper
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+    const { user, loading } = useAuth();
+
+    if (loading) return <Loading />;
+    if (!user) return <Navigate to="/login" />;
+
+    return <>{children}</>;
+};
+
+const App = () => {
+    const { user, loading } = useAuth();
+
+    if (loading) {
+        return <Loading />;
+    }
+
+    return (
+        <Router>
+            <Routes>
+                {/* Public routes */}
+                <Route
+                    path="/login"
+                    element={user ? <Navigate to="/profile" /> : <Login />}
+                />
+                <Route
+                    path="/register"
+                    element={user ? <Navigate to="/profile" /> : <Register />}
+                />
+
+                {/* Protected routes */}
+                <Route
+                    path="/profile"
+                    element={
+                        <ProtectedRoute>
+                            <Profile />
+                        </ProtectedRoute>
+                    }
+                />
+
+                {/* Default redirect */}
+                <Route
+                    path="*"
+                    element={<Navigate to={user ? "/profile" : "/login"} />}
+                />
+            </Routes>
+        </Router>
+    );
+};
+
+export default App;
