@@ -6,9 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { User, Star, Clock, LogOut } from 'lucide-react';
 import { MediaCarousel, generateMockMediaItems } from '../media/MediaComponents';
 import {useNavigate} from "react-router-dom";
-import {useMovies} from "../../hooks/tmdb/useMovies.ts";
+import {useMovies, useTV} from "../../hooks/tmdb";
 import {formatMediaItem} from "../../services/utils/mediaUtils.ts";
-import {useTV} from "../../hooks/tmdb/useTV.ts";
 import {getImageUrl} from "../../services/config/tmdb.config.ts";
 
 // Home Page
@@ -59,28 +58,14 @@ export const DiscoverPage = () => {
     const categories = [
         {
             title: 'Trending Movies',
-            type: 'movies',
-            items: trendingMovies.map(movie => ({
-                id: movie.id,  // Ensure ID is included
-                title: movie.title,
-                imageUrl: getImageUrl(movie.poster_path),
-                rating: (movie.vote_average / 2).toFixed(1),
-                year: new Date(movie.release_date).getFullYear(),
-                mediaType: 'film' as const
-            })),
+            type: 'movies', // Changed from 'film' to match route
+            items: trendingMovies.map(formatMediaItem),
             loading: moviesLoading
         },
         {
-            title: 'Trending TV Shows',
-            type: 'tv' as const,
-            items: trendingTV.map(show => ({
-                id: show.id,
-                title: show.name, // TV shows use 'name' instead of 'title'
-                imageUrl: getImageUrl(show.poster_path),
-                rating: (show.vote_average / 2).toFixed(1),
-                year: new Date(show.first_air_date).getFullYear(),
-                mediaType: 'tv' as const
-            })),
+            title: 'Popular TV Shows',
+            type: 'tv',
+            items: trendingTV.map(formatMediaItem),
             loading: tvLoading
         },
         { title: 'Popular Anime', type: 'anime', items: generateMockMediaItems(10) },

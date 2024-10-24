@@ -1,10 +1,10 @@
 import React, {useEffect, useState} from 'react';
-import { Card, CardContent } from '../ui/card';
+import {Card, CardContent} from '../ui/card';
 import {Check, Compass, Loader2, Plus} from 'lucide-react';
-import { Skeleton } from '../ui/skeleton';
+import {Skeleton} from '../ui/skeleton';
 import {Button} from "../ui/button";
 import {useLibrary} from "../../hooks/useLibrary";
-import { toast } from '../ui/use-toast';
+import {toast} from '../ui/use-toast';
 
 interface MediaCardProps {
     id?: number;  // Make id optional
@@ -23,7 +23,7 @@ export const MediaCard: React.FC<MediaCardProps> = ({
                                                         year,
                                                         mediaType
                                                     }) => {
-    const { addToLibrary, checkInLibrary, loading } = useLibrary();
+    const {addToLibrary, checkInLibrary, loading} = useLibrary();
     const [isInLibrary, setIsInLibrary] = useState(false);
     const [checkingLibrary, setCheckingLibrary] = useState(false);
 
@@ -100,15 +100,15 @@ export const MediaCard: React.FC<MediaCardProps> = ({
                         disabled={loading || isInLibrary || checkingLibrary || !id}
                     >
                         {loading || checkingLibrary ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <Loader2 className="h-4 w-4 animate-spin"/>
                         ) : isInLibrary ? (
                             <>
-                                <Check className="h-4 w-4 mr-2" />
+                                <Check className="h-4 w-4 mr-2"/>
                                 In Library
                             </>
                         ) : (
                             <>
-                                <Plus className="h-4 w-4 mr-2" />
+                                <Plus className="h-4 w-4 mr-2"/>
                                 Add to Library
                             </>
                         )}
@@ -123,11 +123,11 @@ export const MediaCardSkeleton = () => (
     <div className="flex-shrink-0 w-48 mr-4">
         <Card className="h-72 overflow-hidden">
             <div className="h-48 bg-gray-800">
-                <Skeleton className="w-full h-full" />
+                <Skeleton className="w-full h-full"/>
             </div>
             <CardContent className="p-3">
-                <Skeleton className="h-4 w-3/4 mb-2" />
-                <Skeleton className="h-3 w-1/2" />
+                <Skeleton className="h-4 w-3/4 mb-2"/>
+                <Skeleton className="h-3 w-1/2"/>
             </CardContent>
         </Card>
     </div>
@@ -148,12 +148,12 @@ export const MediaCarousel: React.FC<MediaCarouselProps> = ({ title, items, onEx
                 onClick={onExplore}
                 className="flex items-center px-4 py-2 text-sm text-blue-400 hover:text-blue-300 transition-colors"
             >
-                Explore <Compass className="ml-2 h-4 w-4" />
+                Explore <Compass className="ml-2 h-4 w-4"/>
             </button>
         </div>
         <div className="flex overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-800">
             {loading ? (
-                Array(5).fill(0).map((_, i) => <MediaCardSkeleton key={i} />)
+                Array(5).fill(0).map((_, i) => <MediaCardSkeleton key={i}/>)
             ) : (
                 items.map((item, index) => (
                     <MediaCard key={item.id || index} {...item} />
