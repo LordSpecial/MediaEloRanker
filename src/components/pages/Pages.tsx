@@ -4,6 +4,9 @@ import { auth } from '../../firebase';
 import { useAuth } from '../../hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { User, Settings, Library, Star, Clock, LogOut } from 'lucide-react';
+import { MediaCarousel, generateMockMediaItems } from '../media/MediaComponents';
+import {useNavigate} from "react-router-dom";
+
 // Home Page
 export const HomePage = () => {
     return (
@@ -45,27 +48,28 @@ export const HomePage = () => {
 
 // Discover Page
 export const DiscoverPage = () => {
+    const navigate = useNavigate();
+
+    const categories = [
+        { title: 'Trending Movies', type: 'movies', items: generateMockMediaItems(10) },
+        { title: 'Popular TV Shows', type: 'tv', items: generateMockMediaItems(10) },
+        { title: 'Top Anime', type: 'anime', items: generateMockMediaItems(10) },
+        { title: 'Hot Albums', type: 'music', items: generateMockMediaItems(10) }
+    ];
+
     return (
         <div className="min-h-screen bg-gray-900 pt-20 px-4">
             <div className="max-w-7xl mx-auto">
-                <h1 className="text-4xl font-bold text-white mb-8">Discover New Media</h1>
+                <h1 className="text-4xl font-bold text-white mb-8">Discover</h1>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {['Movies', 'TV Shows', 'Books'].map((category) => (
-                        <Card key={category} className="bg-gray-800 border-gray-700">
-                            <CardHeader>
-                                <CardTitle className="text-white">{category}</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="space-y-4 text-gray-300">
-                                    <p>• Top Rated</p>
-                                    <p>• New Releases</p>
-                                    <p>• Recommended</p>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
+                {categories.map((category, index) => (
+                    <MediaCarousel
+                        key={index}
+                        title={category.title}
+                        items={category.items}
+                        onExplore={() => navigate(`/explore/${category.type}`)}
+                    />
+                ))}
             </div>
         </div>
     );

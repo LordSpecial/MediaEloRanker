@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import Register from './components/auth/Register';
 import Login from './components/auth/Login';
+import { MediaExplorePage } from './components/media/MediaExplorePage';
 import { ProfilePage } from './components/pages/Pages';
 import { HomePage } from './components/pages/Pages';
 import { DiscoverPage } from './components/pages/Pages';
@@ -76,6 +77,14 @@ const App = () => {
                         element={
                             <ProtectedRoute>
                                 <DiscoverPage />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/explore/:mediaType"
+                        element={
+                            <ProtectedRoute>
+                                <MediaExplorePage />
                             </ProtectedRoute>
                         }
                     />
