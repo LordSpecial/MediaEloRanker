@@ -13,7 +13,11 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     const { user, loading } = useAuth();
 
     if (loading) return <Loading />;
-    if (!user) return <Navigate to="/login" />;
+
+    // Check for both user existence and email verification
+    if (!user || !user.emailVerified) {
+        return <Navigate to="/login" />;
+    }
 
     return <>{children}</>;
 };
@@ -25,17 +29,29 @@ const App = () => {
         return <Loading />;
     }
 
+    // Helper function to check if user can access auth pages
+    const shouldRedirectToProfile = user && user.emailVerified;
+
     return (
         <Router>
             <Routes>
                 {/* Public routes */}
                 <Route
                     path="/login"
-                    element={user ? <Navigate to="/profile" /> : <Login />}
+                    element={shouldRedirectToProfile ? <Navigate to="/profile" /> : <Login />}
                 />
                 <Route
                     path="/register"
-                    element={user ? <Navigate to="/profile" /> : <Register />}
+                    element={
+                        // Allow unverified users to stay on register page
+                        user && !user.emailVerified ? (
+                            <Register />
+                        ) : shouldRedirectToProfile ? (
+                            <Navigate to="/profile" />
+                        ) : (
+                            <Register />
+                        )
+                    }
                 />
 
                 {/* Protected routes */}
@@ -51,7 +67,15 @@ const App = () => {
                 {/* Default redirect */}
                 <Route
                     path="*"
-                    element={<Navigate to={user ? "/profile" : "/login"} />}
+                    element={
+                        <Navigate to={
+                            shouldRedirectToProfile
+                                ? "/profile"
+                                : user && !user.emailVerified
+                                    ? "/register"  // Keep unverified users on register
+                                    : "/login"
+                        } />
+                    }
                 />
             </Routes>
         </Router>
