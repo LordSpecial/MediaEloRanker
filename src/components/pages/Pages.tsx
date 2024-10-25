@@ -120,45 +120,6 @@ export const RankPage = () => {
     );
 };
 
-// Library Page
-export const LibraryPage = () => {
-    return (
-        <div className="min-h-screen bg-gray-900 pt-20 px-4">
-            <div className="max-w-7xl mx-auto">
-                <h1 className="text-4xl font-bold text-white mb-8">My Library</h1>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Card className="bg-gray-800 border-gray-700">
-                        <CardHeader>
-                            <CardTitle className="text-white">My Rankings</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4 text-gray-300">
-                                <p>• Top 10 Movies of All Time</p>
-                                <p>• Best TV Series 2024</p>
-                                <p>• Favorite Books</p>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="bg-gray-800 border-gray-700">
-                        <CardHeader>
-                            <CardTitle className="text-white">Watchlist</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4 text-gray-300">
-                                <p>• Movie 1</p>
-                                <p>• TV Show 1</p>
-                                <p>• Book 1</p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
-        </div>
-    );
-};
-
 // Profile Page
 export const ProfilePage = () => {
     const { user } = useAuth();

@@ -7,7 +7,7 @@ import { ProfilePage } from './components/pages/Pages';
 import { HomePage } from './components/pages/Pages';
 import { DiscoverPage } from './components/pages/Pages';
 import { RankPage } from './components/pages/Pages';
-import { LibraryPage } from './components/pages/Pages';
+import { LibraryPage } from './components/pages/LibraryPage';
 import Navbar from './components/ui/Navbar';
 import { useAuth } from './hooks/useAuth';
 import {MovieExplorePage} from "./components/media/MovieExplorePage.tsx";
