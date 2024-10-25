@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, Compass, Shuffle, TrendingUp, Star } from 'lucide-react';
-import { MediaCard } from './MediaComponents';
+import { EnhancedMediaCard } from './MediaComponents';
 import { useTV } from '../../hooks/tmdb/useTV';
 import { useSearch } from '../../hooks/tmdb/useSearch';
 import {TMDBTVShow} from "../../services/api/tmdb/types.ts";
@@ -112,7 +112,7 @@ export const TVExplorePage: React.FC = () => {
                             {displayedShows
                                 .filter(isRegularTVShow)
                                 .map((show) => (
-                                    <MediaCard
+                                    <EnhancedMediaCard
                                         key={show.id}
                                         id={show.id}
                                         title={show.name}

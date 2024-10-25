@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent } from '../ui/card';
 import { Search, Compass, Shuffle, TrendingUp, Star } from 'lucide-react';
-import { MediaCard, generateMockMediaItems } from './MediaComponents';
+import { EnhancedMediaCard, generateMockMediaItems } from './MediaComponents';
 
 export const MediaExplorePage: React.FC = () => {
     const { mediaType } = useParams<{ mediaType: string }>();
@@ -63,7 +63,7 @@ export const MediaExplorePage: React.FC = () => {
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                     {mockItems.map((item, index) => (
                         <div key={index} className="aspect-[2/3]">
-                            <MediaCard {...item} />
+                            <EnhancedMediaCard {...item} />
                         </div>
                     ))}
                 </div>

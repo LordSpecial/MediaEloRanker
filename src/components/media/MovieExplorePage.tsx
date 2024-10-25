@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, Compass, Shuffle, TrendingUp, Star } from 'lucide-react';
-import { MediaCard } from './MediaComponents';
+import { EnhancedMediaCard } from './MediaComponents';
 import { useMovies, useSearch } from '../../hooks/tmdb';
 import {isMovie} from "../../services/utils/mediaUtils.ts";
 
@@ -125,7 +125,7 @@ export const MovieExplorePage: React.FC = () => {
                             {displayedShows
                                 .filter(isMovie)
                                 .map((movie) => (
-                                    <MediaCard
+                                    <EnhancedMediaCard
                                         key={movie.id}
                                         id={movie.id}
                                         title={movie.title}

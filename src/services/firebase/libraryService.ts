@@ -13,7 +13,7 @@ import {
 import { db } from '../../firebase';
 
 export interface MediaItem {
-    id: string;
+    id: number;
     mediaId: string;
     type: 'film' | 'tv' | 'anime' | 'music';
     title: string;

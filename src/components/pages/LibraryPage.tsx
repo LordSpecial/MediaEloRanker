@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, Filter, SortDesc } from 'lucide-react';
-import { MediaCard } from '../media/MediaComponents';
+import { EnhancedMediaCard } from '../media/MediaComponents';
 import { useLibrary, SortField } from '../../hooks/useLibrary';
 
 interface Category {
@@ -134,7 +134,7 @@ export const LibraryPage = () => {
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                             {mediaItems.map((item) => (
-                                <MediaCard
+                                <EnhancedMediaCard
                                     key={item.id}
                                     id={item.id}
                                     title={item.title}
