@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { tmdbApi } from '../../services/api/tmdb/tmdbApi';
 import type { TMDBTVShow, TMDBResponse } from '../../services/api/tmdb/types';
+import {isTVShow} from "../../services/utils/mediaUtils.ts";
+import {isAnime} from "../../services/utils/mediaTypeGuards.ts";
 
 type TVCategory = 'popular' | 'top_rated' | 'trending' | 'random';
 
@@ -26,7 +28,7 @@ export const useTV = (category: TVCategory, options: UseTVOptions = {}) => {
 
             switch(cat) {
                 case 'trending':
-                    response = await tmdbApi.getTrending('tv', options.timeWindow || 'week');
+                    response = await tmdbApi.getTrending('tv', options.timeWindow || 'week', pageNum);
                     break;
                 case 'random':
                     const randomPage = Math.floor(Math.random() * 20) + 1;
@@ -39,10 +41,15 @@ export const useTV = (category: TVCategory, options: UseTVOptions = {}) => {
                     response = await tmdbApi.getTVShows(cat, { page: pageNum });
             }
 
+            // Filter out anime from TV shows
+            const tvResults = response.results
+                .filter((item): item is TMDBTVShow => isTVShow(item))
+                .filter(show => !isAnime(show));
+
             if (pageNum === 1 || cat === 'random') {
-                setShows(response.results);
+                setShows(tvResults);
             } else {
-                setShows(prev => [...prev, ...response.results]);
+                setShows(prev => [...prev, ...tvResults]);
             }
 
             setTotalPages(response.total_pages);

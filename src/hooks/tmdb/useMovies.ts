@@ -17,6 +17,7 @@ export const useMovies = (category: MovieCategory, options: UseMoviesOptions = {
     const [totalPages, setTotalPages] = useState(0);
     const [currentPage, setCurrentPage] = useState(options.page || 1);
 
+
     const fetchMovies = async (pageNum: number, cat: MovieCategory = category) => {
         try {
             setLoading(true);
@@ -26,29 +27,32 @@ export const useMovies = (category: MovieCategory, options: UseMoviesOptions = {
 
             switch(cat) {
                 case 'trending':
-                    response = await tmdbApi.getTrending('movie', options.timeWindow || 'week');
+                    response = await tmdbApi.getTrending('movie', options.timeWindow || 'week', pageNum);
                     break;
                 case 'random':
-                    // For random, we'll fetch a random page from popular movies
-                    const randomPage = Math.floor(Math.random() * 20) + 1; // TMDB has max 20 pages for popular
+                    const randomPage = Math.floor(Math.random() * 20) + 1;
                     response = await tmdbApi.getMovies('popular', { page: randomPage });
-                    // Shuffle the results
                     response.results = response.results
                         .sort(() => Math.random() - 0.5)
-                        .slice(0, 20); // Take 20 random movies
+                        .slice(0, 20);
                     break;
                 default:
                     response = await tmdbApi.getMovies(cat, { page: pageNum });
             }
 
+            // Filter to ensure we only have movies
+            const movieResults = response.results.filter((item): item is TMDBMovie =>
+                'title' in item && 'release_date' in item
+            );
+
             if (pageNum === 1 || cat === 'random') {
-                setMovies(response.results);
+                setMovies(movieResults);
             } else {
-                setMovies(prev => [...prev, ...response.results]);
+                setMovies(prev => [...prev, ...movieResults]);
             }
 
             setTotalPages(response.total_pages);
-            setHasMore(pageNum < response.total_pages && cat !== 'random'); // No pagination for random
+            setHasMore(pageNum < response.total_pages && cat !== 'random');
         } catch (err) {
             console.error('Error fetching movies:', err);
             setError(err instanceof Error ? err.message : 'Failed to fetch movies');

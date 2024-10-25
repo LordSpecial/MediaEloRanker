@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Search, Compass, Shuffle, TrendingUp, Star } from 'lucide-react';
 import { MediaCard } from './MediaComponents';
 import { useMovies, useSearch } from '../../hooks/tmdb';
+import {isMovie} from "../../services/utils/mediaUtils.ts";
 
 const CategoryTab: React.FC<{
     icon: React.ElementType;
@@ -49,7 +50,7 @@ export const MovieExplorePage: React.FC = () => {
 
     const isLoading = searchLoading || (moviesLoading && !movies.length);
     const error = searchError || moviesError;
-    const displayedMovies = query ? searchResults : movies;
+    const displayedShows = query ? searchResults : movies;
 
     const handleTabChange = async (newTab: typeof activeTab) => {
         setActiveTab(newTab);
@@ -121,17 +122,19 @@ export const MovieExplorePage: React.FC = () => {
                 {!isLoading && !error && (
                     <>
                         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                            {displayedMovies.map((movie) => (
-                                <MediaCard
-                                    key={movie.id}
-                                    id={movie.id}
-                                    title={movie.title}
-                                    imageUrl={movie.poster_path ? `${import.meta.env.VITE_TMDB_IMAGE_BASE_URL}/w500${movie.poster_path}` : null}
-                                    rating={(movie.vote_average / 2).toFixed(1)}
-                                    year={new Date(movie.release_date).getFullYear()}
-                                    mediaType="film"
-                                />
-                            ))}
+                            {displayedShows
+                                .filter(isMovie)
+                                .map((movie) => (
+                                    <MediaCard
+                                        key={movie.id}
+                                        id={movie.id}
+                                        title={movie.title}
+                                        imageUrl={movie.poster_path ? `${import.meta.env.VITE_TMDB_IMAGE_BASE_URL}/w500${movie.poster_path}` : null}
+                                        rating={(movie.vote_average / 2).toFixed(1)}
+                                        year={new Date(movie.release_date).getFullYear()}
+                                        mediaType="film"
+                                    />
+                                ))}
                         </div>
 
                         {/* Load More Button */}
@@ -174,7 +177,7 @@ export const MovieExplorePage: React.FC = () => {
                 )}
 
                 {/* No Results */}
-                {!isLoading && displayedMovies.length === 0 && (
+                {!isLoading && displayedShows.length === 0 && (
                     <div className="text-center text-gray-400 py-12">
                         No movies found
                     </div>

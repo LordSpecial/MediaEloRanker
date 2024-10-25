@@ -8,6 +8,8 @@ import { MediaCard } from './MediaComponents';
 import { useTV } from '../../hooks/tmdb/useTV';
 import { useSearch } from '../../hooks/tmdb/useSearch';
 import {TMDBTVShow} from "../../services/api/tmdb/types.ts";
+import {isTVShow} from "../../services/utils/mediaUtils.ts";
+import {isRegularTVShow} from "../../services/utils/mediaTypeGuards.ts";
 
 const CategoryTab: React.FC<{
     icon: React.ElementType;
@@ -108,7 +110,7 @@ export const TVExplorePage: React.FC = () => {
                     <>
                         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                             {displayedShows
-                                .filter((show): show is TMDBTVShow => (show as TMDBTVShow).first_air_date !== undefined) // Type guard to filter TV shows
+                                .filter(isRegularTVShow)
                                 .map((show) => (
                                     <MediaCard
                                         key={show.id}

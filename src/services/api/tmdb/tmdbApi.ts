@@ -43,10 +43,16 @@ export const tmdbApi = {
     },
 
     // Trending methods
-    getTrending: async (mediaType: 'movie' | 'tv', timeWindow: 'day' | 'week' = 'week') => {
+    getTrending: async (mediaType: 'movie' | 'tv', timeWindow: 'day' | 'week' = 'week', page: number = 1) => {
         try {
             const response = await api.get<TMDBResponse<TMDBMovie | TMDBTVShow>>(
-                `/trending/${mediaType}/${timeWindow}`
+                `/trending/${mediaType}/${timeWindow}`,
+                {
+                    params: {
+                        page,
+                        language: 'en-US'
+                    }
+                }
             );
             return response.data;
         } catch (error) {
