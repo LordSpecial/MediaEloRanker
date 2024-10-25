@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from './useAuth';
-import { libraryService, MediaItem } from '../services/firebase/libraryService';
+import { libraryService, MediaItem, AddToLibraryParams } from '../services/firebase/libraryService';
 import { toast } from '@/components/ui/use-toast';
 
 export type SortField = 'dateAdded' | 'globalEloScore' | 'categoryEloScore' | 'userRating';
@@ -14,18 +14,22 @@ interface UseLibraryReturn {
     mediaItems: MediaItem[];
     loading: boolean;
     error: string | null;
-    addToLibrary: (mediaData: AddToLibraryParams) => Promise<void>;
+    addToLibrary: (mediaData: Partial<AddToLibraryParams> & { mediaId: string }) => Promise<void>;
     checkInLibrary: (mediaId: string) => Promise<boolean>;
     refetch: () => Promise<void>;
 }
 
-interface AddToLibraryParams {
-    mediaId: string;
-    type: 'film' | 'tv' | 'anime' | 'music';
-    title: string;
-    releaseYear: number;
-    imageUrl: string | null;
-}
+// Helper function to determine media type
+const determineMediaType = (mediaData: Partial<AddToLibraryParams>): 'film' | 'tv' | 'anime' | 'music' => {
+    // If type is already specified, use it
+    if (mediaData.type) {
+        return mediaData.type;
+    }
+
+    // Otherwise, assume it's a film (since we're dealing with TMDB data)
+    // You might want to adjust this logic based on your needs
+    return 'film';
+};
 
 export const useLibrary = ({
                                category = 'all',
@@ -62,7 +66,7 @@ export const useLibrary = ({
         }
     };
 
-    const addToLibrary = useCallback(async (mediaData: AddToLibraryParams) => {
+    const addToLibrary = useCallback(async (mediaData: Partial<AddToLibraryParams> & { mediaId: string }) => {
         if (!user) {
             toast({
                 title: "Authentication Required",
@@ -76,21 +80,30 @@ export const useLibrary = ({
         setError(null);
 
         try {
-            if (!mediaData.mediaId || !mediaData.type || !mediaData.title || !mediaData.releaseYear) {
-                throw new Error('Missing required media data');
+            // Log the incoming data for debugging
+            console.log('Adding to library with data:', mediaData);
+
+            // Validate required fields
+            if (!mediaData.mediaId || !mediaData.title || !mediaData.releaseYear) {
+                console.error('Invalid media data:', mediaData);
+                throw new Error('Missing required media data. Please ensure all required fields are provided.');
             }
 
-            await libraryService.addToLibrary(user.uid, {
-                ...mediaData,
+            // Determine the media type
+            const type = determineMediaType(mediaData);
+
+            // Create complete media data object
+            const completeMediaData: AddToLibraryParams = {
                 mediaId: mediaData.mediaId.toString(),
-                type: mediaData.type,
+                type,
                 title: mediaData.title,
                 releaseYear: mediaData.releaseYear,
-                imageUrl: mediaData.imageUrl
-            });
+                imageUrl: mediaData.imageUrl || null
+            };
 
-            const validation = await libraryService.validateLibraryItem(user.uid, mediaData.mediaId);
-            console.log('Validation after adding:', validation);
+            console.log('Processed media data:', completeMediaData);
+
+            await libraryService.addToLibrary(user.uid, completeMediaData);
 
             toast({
                 title: "Added to Library",
@@ -103,16 +116,16 @@ export const useLibrary = ({
                 ? err.message
                 : 'Failed to add to library';
 
+            console.error('Add to library error details:', {
+                mediaData,
+                error: err
+            });
+
             setError(errorMessage);
             toast({
                 title: "Error",
                 description: errorMessage,
                 variant: "destructive"
-            });
-
-            console.error('Add to library error details:', {
-                mediaData,
-                error: err
             });
         } finally {
             setLoading(false);
@@ -135,13 +148,12 @@ export const useLibrary = ({
         fetchLibrary();
     }, [user, category, sortOrder]);
 
-    // Make sure to include all functions in the return value
     return {
         mediaItems,
         loading,
         error,
         addToLibrary,
-        checkInLibrary,  // This was missing before
+        checkInLibrary,
         refetch: fetchLibrary
     };
 };

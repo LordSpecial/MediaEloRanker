@@ -17,7 +17,7 @@ export interface MediaItem {
     mediaId: string;
     type: 'film' | 'tv' | 'anime' | 'music';
     title: string;
-    imageUrl: string;
+    imageUrl: string | null;
     releaseYear: number;
     userRating: number | null;
     globalEloScore: number;
@@ -25,7 +25,7 @@ export interface MediaItem {
     addedAt: Date;
 }
 
-interface AddToLibraryParams {
+export interface AddToLibraryParams {
     mediaId: string;
     type: 'film' | 'tv' | 'anime' | 'music';
     title: string;
@@ -52,31 +52,34 @@ export const libraryService = {
 
     async addToLibrary(userId: string, mediaData: AddToLibraryParams) {
         try {
+            // Validate required fields
+            if (!mediaData.mediaId || !mediaData.type || !mediaData.title || !mediaData.releaseYear) {
+                console.error('Missing required fields:', mediaData);
+                throw new Error('Missing required media data');
+            }
+
+            // Ensure user profile exists first
             await this.ensureUserProfile(userId);
 
+            // Create or update media metadata
             const mediaMetadataRef = doc(db, 'mediaMetadata', mediaData.mediaId);
             const mediaMetadata = await getDoc(mediaMetadataRef);
 
+            const mediaDocument = {
+                id: mediaData.mediaId,
+                type: mediaData.type,
+                title: mediaData.title,
+                releaseYear: mediaData.releaseYear,
+                imageUrl: mediaData.imageUrl || null,
+                createdAt: serverTimestamp()
+            };
+
+            // Create or update media metadata
             if (!mediaMetadata.exists()) {
-                const mediaDocument = {
-                    id: mediaData.mediaId,
-                    type: mediaData.type,
-                    title: mediaData.title,
-                    releaseYear: mediaData.releaseYear,
-                    imageUrl: mediaData.imageUrl,
-                    createdAt: serverTimestamp()
-                };
-
-                const validDocument = Object.entries(mediaDocument).reduce((acc, [key, value]) => {
-                    if (value !== undefined) {
-                        acc[key] = value;
-                    }
-                    return acc;
-                }, {} as Record<string, any>);
-
-                await setDoc(mediaMetadataRef, validDocument);
+                await setDoc(mediaMetadataRef, mediaDocument);
             }
 
+            // Add to user's library
             const userLibraryRef = doc(db, `users/${userId}/library/${mediaData.mediaId}`);
             const libraryDocument = {
                 mediaId: mediaData.mediaId,
@@ -91,6 +94,7 @@ export const libraryService = {
             };
 
             await setDoc(userLibraryRef, libraryDocument);
+
             return true;
         } catch (error) {
             console.error('Error adding to library:', error);
