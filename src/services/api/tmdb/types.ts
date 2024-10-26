@@ -111,7 +111,7 @@ export interface TMDBCastMember {
     name: string;
     character: string;
     profile_path: string | null;
-    order?: number; // Make order optional since it's not always present
+    order?: number;
 }
 
 export interface TMDBCrewMember {
@@ -119,10 +119,12 @@ export interface TMDBCrewMember {
     name: string;
     job: string;
     department: string;
-    profile_path: string | null;
+    profile_path?: string | null; // Make profile_path optional
 }
 
 export interface TMDBCredits {
     cast: TMDBCastMember[];
     crew: TMDBCrewMember[];
 }
+
+export type TMDBMediaItem = TMDBMovie | TMDBTVShow;

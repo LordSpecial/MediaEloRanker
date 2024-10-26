@@ -55,21 +55,42 @@ export const DiscoverPage = () => {
     const { movies: trendingMovies, loading: moviesLoading } = useMovies('trending', { timeWindow: 'week' });
     const { shows: trendingTV, loading: tvLoading } = useTV('trending', { timeWindow: 'week' });
 
+    // Format and type-check the media items
+    const formattedMovies = React.useMemo(() =>
+            trendingMovies.map(formatMediaItem),
+        [trendingMovies]
+    );
+
+    const formattedTVShows = React.useMemo(() =>
+            trendingTV.map(formatMediaItem),
+        [trendingTV]
+    );
+
     const categories = [
         {
             title: 'Trending Movies',
-            type: 'movies', // Changed from 'film' to match route
-            items: trendingMovies.map(formatMediaItem),
+            type: 'movies',
+            items: formattedMovies,
             loading: moviesLoading
         },
         {
             title: 'Popular TV Shows',
             type: 'tv',
-            items: trendingTV.map(formatMediaItem),
+            items: formattedTVShows,
             loading: tvLoading
         },
-        { title: 'Popular Anime', type: 'anime', items: generateMockMediaItems(10) },
-        { title: 'Hot Albums', type: 'music', items: generateMockMediaItems(10) }
+        {
+            title: 'Popular Anime',
+            type: 'anime',
+            items: generateMockMediaItems(10),
+            loading: false
+        },
+        {
+            title: 'Hot Albums',
+            type: 'music',
+            items: generateMockMediaItems(10),
+            loading: false
+        }
     ];
 
     return (
@@ -77,9 +98,9 @@ export const DiscoverPage = () => {
             <div className="max-w-7xl mx-auto">
                 <h1 className="text-4xl font-bold text-white mb-8">Discover</h1>
 
-                {categories.map((category, index) => (
+                {categories.map((category) => (
                     <MediaCarousel
-                        key={index}
+                        key={category.type}
                         title={category.title}
                         items={category.items}
                         onExplore={() => navigate(`/explore/${category.type}`)}

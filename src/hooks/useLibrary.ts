@@ -57,6 +57,7 @@ interface UseLibraryReturn {
     updateUserRating: (mediaId: string, rating: number) => Promise<void>;
     getUserRating: (mediaId: string) => Promise<number | null>;
     getMediaMetadata: (mediaId: string) => Promise<MediaMetadata | null>;
+    updateMediaMetadata: (mediaId: string, metadata: MediaMetadata) => Promise<void>;
     refetch: () => Promise<void>;
 }
 
@@ -248,6 +249,18 @@ export const useLibrary = ({
         }
     }, [user]);
 
+    const updateMediaMetadata = useCallback(async (mediaId: string, metadata: MediaMetadata) => {
+        if (!user) return;
+
+        try {
+            await libraryService.updateMediaMetadata(mediaId, metadata);
+            await fetchLibrary(); // Optionally refresh the library after update
+        } catch (err) {
+            console.error('Error updating metadata:', err);
+            throw err;
+        }
+    }, [user, fetchLibrary]);
+
     const checkInLibrary = useCallback(async (mediaId: string): Promise<boolean> => {
         if (!user) return false;
 
@@ -272,6 +285,7 @@ export const useLibrary = ({
         updateUserRating,
         getUserRating,
         getMediaMetadata,
+        updateMediaMetadata,
         refetch: fetchLibrary
     };
 };

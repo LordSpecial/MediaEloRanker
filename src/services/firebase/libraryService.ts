@@ -345,7 +345,18 @@ export const libraryService = {
     async updateMediaMetadata(mediaId: string, metadata: MediaMetadata): Promise<void> {
         try {
             const mediaMetadataRef = doc(db, 'mediaMetadata', mediaId);
-            await updateDoc(mediaMetadataRef, { metadata });
+            const mediaMetadataSnap = await getDoc(mediaMetadataRef);
+
+            if (!mediaMetadataSnap.exists()) {
+                throw new Error('Media document not found');
+            }
+
+            await updateDoc(mediaMetadataRef, {
+                metadata,
+                lastUpdated: serverTimestamp()
+            });
+
+            console.log('Successfully updated metadata for:', mediaId);
         } catch (error) {
             console.error('Error updating media metadata:', error);
             throw error;
