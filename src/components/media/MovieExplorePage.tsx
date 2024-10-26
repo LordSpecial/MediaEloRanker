@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, Compass, Shuffle, TrendingUp, Star } from 'lucide-react';
-import { EnhancedMediaCard } from './MediaComponents';
+import { EnhancedMediaCard } from './EnhancedMediaCard';
 import { useMovies, useSearch } from '../../hooks/tmdb';
 import {isMovie} from "../../services/utils/mediaUtils.ts";
 

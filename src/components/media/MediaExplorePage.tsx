@@ -2,7 +2,8 @@ import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent } from '../ui/card';
 import { Search, Compass, Shuffle, TrendingUp, Star } from 'lucide-react';
-import { EnhancedMediaCard, generateMockMediaItems } from './MediaComponents';
+import { generateMockMediaItems } from './MediaComponents';
+import { EnhancedMediaCard } from './EnhancedMediaCard';
 
 export const MediaExplorePage: React.FC = () => {
     const { mediaType } = useParams<{ mediaType: string }>();

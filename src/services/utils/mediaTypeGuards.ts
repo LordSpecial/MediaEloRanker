@@ -1,4 +1,4 @@
-import { TMDBMovie, TMDBTVShow } from '../services/api/tmdb/types';
+import { TMDBMovie, TMDBTVShow } from '../api/tmdb/types';
 
 export const isMovie = (media: TMDBMovie | TMDBTVShow): media is TMDBMovie => {
     return 'title' in media && 'release_date' in media;

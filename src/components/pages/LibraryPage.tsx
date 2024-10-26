@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, Filter, SortDesc } from 'lucide-react';
-import { EnhancedMediaCard } from '../media/MediaComponents';
+import { EnhancedMediaCard } from '../media/EnhancedMediaCard';
 import { useLibrary, SortField } from '../../hooks/useLibrary';
 
 interface Category {

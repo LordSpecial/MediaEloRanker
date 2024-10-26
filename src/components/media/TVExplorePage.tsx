@@ -3,12 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Compass, Shuffle, TrendingUp, Star } from 'lucide-react';
-import { EnhancedMediaCard } from './MediaComponents';
+import { Search, Shuffle, TrendingUp, Star } from 'lucide-react';
+import { EnhancedMediaCard } from './EnhancedMediaCard';
 import { useTV } from '../../hooks/tmdb/useTV';
 import { useSearch } from '../../hooks/tmdb/useSearch';
-import {TMDBTVShow} from "../../services/api/tmdb/types.ts";
-import {isTVShow} from "../../services/utils/mediaUtils.ts";
 import {isRegularTVShow} from "../../services/utils/mediaTypeGuards.ts";
 
 const CategoryTab: React.FC<{

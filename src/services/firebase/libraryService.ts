@@ -8,9 +8,41 @@ import {
     orderBy,
     getDocs,
     serverTimestamp,
-    QueryConstraint
+    QueryConstraint,
+    updateDoc,
 } from 'firebase/firestore';
 import { db } from '../../firebase';
+
+// Base metadata interface
+export interface BaseMediaMetadata {
+    description: string;
+    genre: string[];
+}
+
+// Media-specific metadata interfaces
+export interface FilmTVMetadata extends BaseMediaMetadata {
+    director: string;
+    writers: string[];
+    cast: string[];
+    duration: string;
+}
+
+export interface AnimeMetadata extends BaseMediaMetadata {
+    studio: string;
+    director: string;
+    writers: string[];
+    cast: string[];
+    episodes: number;
+}
+
+export interface MusicMetadata extends BaseMediaMetadata {
+    artist: string;
+    album: string;
+    tracks: number;
+    label: string;
+}
+
+export type MediaMetadata = FilmTVMetadata | AnimeMetadata | MusicMetadata;
 
 export interface MediaItem {
     id: number;
@@ -23,6 +55,7 @@ export interface MediaItem {
     globalEloScore: number;
     categoryEloScore: number;
     addedAt: Date;
+    metadata?: MediaMetadata;
 }
 
 export interface AddToLibraryParams {
@@ -31,9 +64,37 @@ export interface AddToLibraryParams {
     title: string;
     releaseYear: number;
     imageUrl: string | null;
+    metadata?: MediaMetadata;
 }
 
 type SortField = 'dateAdded' | 'globalEloScore' | 'categoryEloScore' | 'userRating';
+
+// Firestore document types
+interface LibraryDocument {
+    mediaId: string;
+    type: 'film' | 'tv' | 'anime' | 'music';
+    addedAt: any;
+    userRating: number | null;
+    globalEloScore: number;
+    globalEloMatches: number;
+    categoryEloScore: number;
+    categoryEloMatches: number;
+    lastUpdated: any;
+}
+
+interface MediaMetadataDocument {
+    id: string;
+    type: 'film' | 'tv' | 'anime' | 'music';
+    title: string;
+    releaseYear: number;
+    imageUrl: string | null;
+    metadata?: MediaMetadata;
+    createdAt: any;
+}
+
+type MediaItemWithOptionalMetadata = Omit<MediaItem, 'metadata'> & {
+    metadata?: MediaMetadata;
+};
 
 export const libraryService = {
     async ensureUserProfile(userId: string) {
@@ -71,12 +132,21 @@ export const libraryService = {
                 title: mediaData.title,
                 releaseYear: mediaData.releaseYear,
                 imageUrl: mediaData.imageUrl || null,
+                metadata: mediaData.metadata || null, // Add metadata support
                 createdAt: serverTimestamp()
             };
 
             // Create or update media metadata
             if (!mediaMetadata.exists()) {
                 await setDoc(mediaMetadataRef, mediaDocument);
+            } else {
+                // Update existing metadata if new metadata is provided
+                if (mediaData.metadata) {
+                    await updateDoc(mediaMetadataRef, {
+                        metadata: mediaData.metadata,
+                        lastUpdated: serverTimestamp()
+                    });
+                }
             }
 
             // Add to user's library
@@ -121,16 +191,12 @@ export const libraryService = {
     ): Promise<MediaItem[]> {
         try {
             const libraryRef = collection(db, `users/${userId}/library`);
-
-            // Build query constraints
             const constraints: QueryConstraint[] = [];
 
-            // Only add type filter if not "all"
             if (category !== 'all') {
                 constraints.push(where('type', '==', category));
             }
 
-            // Handle sorting
             let sortField: string;
             switch (sortOrder) {
                 case 'dateAdded':
@@ -145,109 +211,144 @@ export const libraryService = {
                     sortField = 'addedAt';
             }
 
-            // If we're not filtering by type, we don't need the composite index
+            const processDocument = async (document: any) => {
+                const libraryData = document.data() as LibraryDocument;
+                const mediaMetadataRef = doc(db, 'mediaMetadata', libraryData.mediaId);
+                const mediaMetadataSnap = await getDoc(mediaMetadataRef);
+                const mediaMetadata = mediaMetadataSnap.data() as MediaMetadataDocument | undefined;
+
+                if (!mediaMetadata) {
+                    console.warn(`No metadata found for media item: ${libraryData.mediaId}`);
+                    return null;
+                }
+
+                const mediaItem: MediaItemWithOptionalMetadata = {
+                    id: parseInt(document.id),
+                    mediaId: libraryData.mediaId,
+                    type: libraryData.type,
+                    title: mediaMetadata.title,
+                    imageUrl: mediaMetadata.imageUrl,
+                    releaseYear: mediaMetadata.releaseYear,
+                    userRating: libraryData.userRating,
+                    globalEloScore: libraryData.globalEloScore,
+                    categoryEloScore: libraryData.categoryEloScore,
+                    addedAt: libraryData.addedAt?.toDate() || new Date(),
+                    metadata: mediaMetadata.metadata
+                };
+
+                return mediaItem;
+            };
+
             if (category === 'all') {
                 constraints.push(orderBy(sortField, 'desc'));
-            } else {
-                // When filtering by type, we need to handle the index requirement
-                try {
-                    constraints.push(orderBy(sortField, 'desc'));
-                    const libraryQuery = query(libraryRef, ...constraints);
-                    const snapshot = await getDocs(libraryQuery);
-
-                    const libraryData = await Promise.all(
-                        snapshot.docs.map(async (document) => {
-                            const libraryData = document.data();
-                            const mediaMetadataRef = doc(db, 'mediaMetadata', libraryData.mediaId);
-                            const mediaMetadataSnap = await getDoc(mediaMetadataRef);
-                            const mediaMetadata = mediaMetadataSnap.data();
-
-                            if (!mediaMetadata) {
-                                console.warn(`No metadata found for media item: ${libraryData.mediaId}`);
-                                return null;
-                            }
-
-                            return {
-                                id: document.id,
-                                ...libraryData,
-                                ...mediaMetadata,
-                                addedAt: libraryData.addedAt?.toDate() || new Date(),
-                            } as MediaItem;
-                        })
-                    );
-
-                    return libraryData.filter((item): item is MediaItem => item !== null);
-                } catch (error: any) {
-                    // If we get an index error, fall back to client-side sorting
-                    if (error?.message?.includes('index')) {
-                        console.warn('Index not ready, falling back to client-side sorting');
-
-                        // Remove the orderBy constraint and fetch all items of this type
-                        const basicQuery = query(libraryRef, where('type', '==', category));
-                        const snapshot = await getDocs(basicQuery);
-
-                        const libraryData = await Promise.all(
-                            snapshot.docs.map(async (document) => {
-                                const libraryData = document.data();
-                                const mediaMetadataRef = doc(db, 'mediaMetadata', libraryData.mediaId);
-                                const mediaMetadataSnap = await getDoc(mediaMetadataRef);
-                                const mediaMetadata = mediaMetadataSnap.data();
-
-                                if (!mediaMetadata) {
-                                    return null;
-                                }
-
-                                return {
-                                    id: document.id,
-                                    ...libraryData,
-                                    ...mediaMetadata,
-                                    addedAt: libraryData.addedAt?.toDate() || new Date(),
-                                } as MediaItem;
-                            })
-                        );
-
-                        const filteredData = libraryData.filter((item): item is MediaItem => item !== null);
-
-                        // Sort the data client-side
-                        return filteredData.sort((a, b) => {
-                            if (sortOrder === 'dateAdded') {
-                                return b.addedAt.getTime() - a.addedAt.getTime();
-                            }
-                            return (b[sortOrder] || 0) - (a[sortOrder] || 0);
-                        });
-                    }
-                    throw error;
-                }
+                const libraryQuery = query(libraryRef, ...constraints);
+                const snapshot = await getDocs(libraryQuery);
+                const items = await Promise.all(snapshot.docs.map(processDocument));
+                return items.filter((item): item is MediaItem => item !== null);
             }
 
-            // If we get here, we're just doing a simple sort without type filtering
-            const libraryQuery = query(libraryRef, ...constraints);
-            const snapshot = await getDocs(libraryQuery);
+            try {
+                constraints.push(orderBy(sortField, 'desc'));
+                const libraryQuery = query(libraryRef, ...constraints);
+                const snapshot = await getDocs(libraryQuery);
+                const items = await Promise.all(snapshot.docs.map(processDocument));
+                return items.filter((item): item is MediaItem => item !== null);
+            } catch (error: any) {
+                if (error?.message?.includes('index')) {
+                    console.warn('Index not ready, falling back to client-side sorting');
+                    const basicQuery = query(libraryRef, where('type', '==', category));
+                    const snapshot = await getDocs(basicQuery);
+                    const items = await Promise.all(snapshot.docs.map(processDocument));
+                    const filteredItems = items.filter((item): item is MediaItem => item !== null);
 
-            const libraryData = await Promise.all(
-                snapshot.docs.map(async (document) => {
-                    const libraryData = document.data();
-                    const mediaMetadataRef = doc(db, 'mediaMetadata', libraryData.mediaId);
-                    const mediaMetadataSnap = await getDoc(mediaMetadataRef);
-                    const mediaMetadata = mediaMetadataSnap.data();
-
-                    if (!mediaMetadata) {
-                        return null;
-                    }
-
-                    return {
-                        id: document.id,
-                        ...libraryData,
-                        ...mediaMetadata,
-                        addedAt: libraryData.addedAt?.toDate() || new Date(),
-                    } as MediaItem;
-                })
-            );
-
-            return libraryData.filter((item): item is MediaItem => item !== null);
+                    return filteredItems.sort((a, b) => {
+                        if (sortOrder === 'dateAdded') {
+                            return b.addedAt.getTime() - a.addedAt.getTime();
+                        }
+                        return (b[sortOrder] || 0) - (a[sortOrder] || 0);
+                    });
+                }
+                throw error;
+            }
         } catch (error) {
             console.error('Error fetching library items:', error);
             throw error;
         }
-    }
+    },
+
+    async updateUserRating(userId: string, mediaId: string, rating: number): Promise<void> {
+        try {
+            if (rating < 0 || rating > 5) {
+                throw new Error('Rating must be between 0 and 5');
+            }
+
+            const userLibraryRef = doc(db, `users/${userId}/library/${mediaId}`);
+            const libraryItem = await getDoc(userLibraryRef);
+
+            if (!libraryItem.exists()) {
+                throw new Error('Media item not found in library');
+            }
+
+            await updateDoc(userLibraryRef, {
+                userRating: rating,
+                lastUpdated: serverTimestamp()
+            });
+        } catch (error) {
+            console.error('Error updating user rating:', error);
+            throw error;
+        }
+    },
+
+    async getUserRating(userId: string, mediaId: string): Promise<number | null> {
+        try {
+            const userLibraryRef = doc(db, `users/${userId}/library/${mediaId}`);
+            const libraryItem = await getDoc(userLibraryRef);
+
+            if (!libraryItem.exists()) {
+                return null;
+            }
+
+            const data = libraryItem.data();
+            return data.userRating || null;
+        } catch (error) {
+            console.error('Error getting user rating:', error);
+            return null;
+        }
+    },
+
+    async getMediaMetadata(userId: string, mediaId: string): Promise<MediaMetadata | null> {
+        try {
+            // First check if the item is in the user's library
+            const userLibraryRef = doc(db, `users/${userId}/library/${mediaId}`);
+            const libraryItem = await getDoc(userLibraryRef);
+
+            if (!libraryItem.exists()) {
+                return null;
+            }
+
+            // Get the metadata from the mediaMetadata collection
+            const mediaMetadataRef = doc(db, 'mediaMetadata', mediaId);
+            const mediaMetadata = await getDoc(mediaMetadataRef);
+
+            if (!mediaMetadata.exists()) {
+                return null;
+            }
+
+            const data = mediaMetadata.data();
+            return data.metadata || null;
+        } catch (error) {
+            console.error('Error getting media metadata:', error);
+            return null;
+        }
+    },
+
+    async updateMediaMetadata(mediaId: string, metadata: MediaMetadata): Promise<void> {
+        try {
+            const mediaMetadataRef = doc(db, 'mediaMetadata', mediaId);
+            await updateDoc(mediaMetadataRef, { metadata });
+        } catch (error) {
+            console.error('Error updating media metadata:', error);
+            throw error;
+        }
+    },
 };

@@ -2,8 +2,46 @@ import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from './useAuth';
 import { libraryService, MediaItem, AddToLibraryParams } from '../services/firebase/libraryService';
 import { toast } from '@/components/ui/use-toast';
+import {tmdbApi} from "../services/api/tmdb/tmdbApi.ts";
+import {convertTMDBToMetadata} from "../services/utils/mediaTransforms.ts";
 
 export type SortField = 'dateAdded' | 'globalEloScore' | 'categoryEloScore' | 'userRating';
+
+// Extended interfaces for different media types
+interface BaseMediaMetadata {
+    description: string;
+    genre: string[];
+}
+
+export interface FilmTVMetadata extends BaseMediaMetadata {
+    director: string;
+    writers: string[];
+    cast: string[];
+    duration: string;
+}
+
+export interface AnimeMetadata extends BaseMediaMetadata {
+    studio: string;
+    director: string;
+    writers: string[];
+    cast: string[];
+    episodes: number;
+}
+
+export interface MusicMetadata extends BaseMediaMetadata {
+    artist: string;
+    album: string;
+    tracks: number;
+    label: string;
+}
+
+export type MediaMetadata = FilmTVMetadata | AnimeMetadata | MusicMetadata;
+
+// Extended AddToLibraryParams to include metadata and user rating
+export interface ExtendedAddToLibraryParams extends AddToLibraryParams {
+    metadata?: MediaMetadata;
+    userRating?: number;
+}
 
 interface UseLibraryProps {
     category?: string;
@@ -14,21 +52,46 @@ interface UseLibraryReturn {
     mediaItems: MediaItem[];
     loading: boolean;
     error: string | null;
-    addToLibrary: (mediaData: Partial<AddToLibraryParams> & { mediaId: string }) => Promise<void>;
+    addToLibrary: (mediaData: Partial<ExtendedAddToLibraryParams> & { mediaId: string }) => Promise<void>;
     checkInLibrary: (mediaId: string) => Promise<boolean>;
+    updateUserRating: (mediaId: string, rating: number) => Promise<void>;
+    getUserRating: (mediaId: string) => Promise<number | null>;
+    getMediaMetadata: (mediaId: string) => Promise<MediaMetadata | null>;
     refetch: () => Promise<void>;
 }
 
-// Helper function to determine media type
-const determineMediaType = (mediaData: Partial<AddToLibraryParams>): 'film' | 'tv' | 'anime' | 'music' => {
-    // If type is already specified, use it
-    if (mediaData.type) {
-        return mediaData.type;
+const validateMediaData = (mediaData: Partial<ExtendedAddToLibraryParams>) => {
+    if (!mediaData.mediaId || !mediaData.title || !mediaData.releaseYear) {
+        throw new Error('Missing required media data. Please ensure all required fields are provided.');
     }
 
-    // Otherwise, assume it's a film (since we're dealing with TMDB data)
-    // You might want to adjust this logic based on your needs
-    return 'film';
+    if (mediaData.userRating !== undefined) {
+        if (mediaData.userRating < 0 || mediaData.userRating > 5) {
+            throw new Error('User rating must be between 0 and 5.');
+        }
+    }
+
+    // Type-specific validation
+    if (mediaData.metadata) {
+        switch (mediaData.type) {
+            case 'music':
+                if (!('artist' in mediaData.metadata)) {
+                    throw new Error('Music metadata must include artist information.');
+                }
+                break;
+            case 'film':
+            case 'tv':
+                if (!('director' in mediaData.metadata)) {
+                    throw new Error('Film/TV metadata must include director information.');
+                }
+                break;
+            case 'anime':
+                if (!('studio' in mediaData.metadata)) {
+                    throw new Error('Anime metadata must include studio information.');
+                }
+                break;
+        }
+    }
 };
 
 export const useLibrary = ({
@@ -46,12 +109,7 @@ export const useLibrary = ({
         try {
             setLoading(true);
             setError(null);
-
-            console.log('Fetching library with params:', { category, sortOrder });
-
             const items = await libraryService.fetchLibraryItems(user.uid, category, sortOrder);
-            console.log('Fetched items:', items);
-
             setMediaItems(items);
         } catch (err) {
             console.error('Error fetching library:', err);
@@ -66,7 +124,29 @@ export const useLibrary = ({
         }
     };
 
-    const addToLibrary = useCallback(async (mediaData: Partial<AddToLibraryParams> & { mediaId: string }) => {
+    const fetchMediaMetadata = async (mediaId: string, type: 'film' | 'tv'): Promise<MediaMetadata> => {
+        try {
+            console.log('Fetching metadata for:', { mediaId, type });
+
+            if (type === 'film') {
+                const details = await tmdbApi.getMovieDetails(mediaId);
+                const credits = await tmdbApi.getCredits('movie', mediaId);
+                console.log('Got movie details:', details);
+                return convertTMDBToMetadata(details, credits);
+            } else if (type === 'tv') {
+                const details = await tmdbApi.getTVShowDetails(mediaId);
+                const credits = await tmdbApi.getCredits('tv', mediaId);
+                console.log('Got TV details:', details);
+                return convertTMDBToMetadata(details, credits);
+            }
+            throw new Error('Unsupported media type');
+        } catch (error) {
+            console.error('Error fetching media metadata:', error);
+            throw error;
+        }
+    };
+
+    const addToLibrary = useCallback(async (mediaData: Partial<ExtendedAddToLibraryParams> & { mediaId: string }) => {
         if (!user) {
             toast({
                 title: "Authentication Required",
@@ -80,28 +160,25 @@ export const useLibrary = ({
         setError(null);
 
         try {
-            // Log the incoming data for debugging
-            console.log('Adding to library with data:', mediaData);
+            validateMediaData(mediaData);
 
-            // Validate required fields
-            if (!mediaData.mediaId || !mediaData.title || !mediaData.releaseYear) {
-                console.error('Invalid media data:', mediaData);
-                throw new Error('Missing required media data. Please ensure all required fields are provided.');
+            const type = mediaData.type || 'film';
+
+            // Fetch metadata if not provided
+            let metadata = mediaData.metadata;
+            if (!metadata && (type === 'film' || type === 'tv')) {
+                metadata = await fetchMediaMetadata(mediaData.mediaId, type);
             }
 
-            // Determine the media type
-            const type = determineMediaType(mediaData);
-
-            // Create complete media data object
-            const completeMediaData: AddToLibraryParams = {
+            const completeMediaData: ExtendedAddToLibraryParams = {
                 mediaId: mediaData.mediaId.toString(),
                 type,
-                title: mediaData.title,
-                releaseYear: mediaData.releaseYear,
-                imageUrl: mediaData.imageUrl || null
+                title: mediaData.title!,
+                releaseYear: mediaData.releaseYear!,
+                imageUrl: mediaData.imageUrl || null,
+                metadata,
+                userRating: mediaData.userRating
             };
-
-            console.log('Processed media data:', completeMediaData);
 
             await libraryService.addToLibrary(user.uid, completeMediaData);
 
@@ -112,15 +189,7 @@ export const useLibrary = ({
 
             await fetchLibrary();
         } catch (err) {
-            const errorMessage = err instanceof Error
-                ? err.message
-                : 'Failed to add to library';
-
-            console.error('Add to library error details:', {
-                mediaData,
-                error: err
-            });
-
+            const errorMessage = err instanceof Error ? err.message : 'Failed to add to library';
             setError(errorMessage);
             toast({
                 title: "Error",
@@ -129,6 +198,53 @@ export const useLibrary = ({
             });
         } finally {
             setLoading(false);
+        }
+    }, [user]);
+
+    const updateUserRating = useCallback(async (mediaId: string, rating: number) => {
+        if (!user) return;
+
+        try {
+            if (rating < 0 || rating > 5) {
+                throw new Error('Rating must be between 0 and 5');
+            }
+
+            await libraryService.updateUserRating(user.uid, mediaId, rating);
+            await fetchLibrary();
+
+            toast({
+                title: "Rating Updated",
+                description: "Your rating has been saved",
+            });
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Failed to update rating';
+            toast({
+                title: "Error",
+                description: errorMessage,
+                variant: "destructive"
+            });
+        }
+    }, [user]);
+
+    const getUserRating = useCallback(async (mediaId: string): Promise<number | null> => {
+        if (!user) return null;
+
+        try {
+            return await libraryService.getUserRating(user.uid, mediaId);
+        } catch (err) {
+            console.error('Error fetching user rating:', err);
+            return null;
+        }
+    }, [user]);
+
+    const getMediaMetadata = useCallback(async (mediaId: string): Promise<MediaMetadata | null> => {
+        if (!user) return null;
+
+        try {
+            return await libraryService.getMediaMetadata(user.uid, mediaId);
+        } catch (err) {
+            console.error('Error fetching media metadata:', err);
+            return null;
         }
     }, [user]);
 
@@ -144,7 +260,6 @@ export const useLibrary = ({
     }, [user]);
 
     useEffect(() => {
-        console.log('useEffect triggered with:', { category, sortOrder });
         fetchLibrary();
     }, [user, category, sortOrder]);
 
@@ -154,6 +269,9 @@ export const useLibrary = ({
         error,
         addToLibrary,
         checkInLibrary,
+        updateUserRating,
+        getUserRating,
+        getMediaMetadata,
         refetch: fetchLibrary
     };
 };
