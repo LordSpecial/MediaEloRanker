@@ -38,13 +38,8 @@ interface UseDetailsOptions {
 }
 
 export const useDetails = (
-    movieId: number | null,
-    {
-        includeCredits = false,
-        includeVideos = false,
-        includeSimilar = false,
-        includeRecommendations = false,
-    }: UseDetailsOptions = {}
+    mediaId: number | null,
+    options: UseDetailsOptions = {}
 ) => {
     const [details, setDetails] = useState<MovieDetails | null>(null);
     const [loading, setLoading] = useState(false);
@@ -52,48 +47,58 @@ export const useDetails = (
 
     useEffect(() => {
         const fetchDetails = async () => {
-            if (!movieId) return;
+            // Reset if no mediaId
+            if (!mediaId) {
+                setDetails(null);
+                setLoading(false);
+                setError(null);
+                console.log('No mediaId provided to useDetails');
+                return;
+            }
 
             setLoading(true);
             setError(null);
 
             try {
-                // Fetch basic movie details
-                const movieDetails = await tmdbApi.getMovieDetails(movieId);
-                const enhancedDetails: MovieDetails = { ...movieDetails };
+                console.log('Fetching details for:', mediaId);
+                const movieDetails = await tmdbApi.getMovieDetails(mediaId);
+                console.log('Got basic movie details:', movieDetails);
 
-                // Parallel fetch for additional data
-                const additionalData = await Promise.all([
-                    includeCredits ? tmdbApi.get(`/movie/${movieId}/credits`) : null,
-                    includeVideos ? tmdbApi.get(`/movie/${movieId}/videos`) : null,
-                    includeSimilar ? tmdbApi.getMovieDetails(movieId) : null,
-                    includeRecommendations ? tmdbApi.get(`/movie/${movieId}/recommendations`) : null,
-                ]);
-
-                // Add additional data to details
-                if (includeCredits && additionalData[0]) {
-                    enhancedDetails.credits = additionalData[0].data;
-                }
-                if (includeVideos && additionalData[1]) {
-                    enhancedDetails.videos = additionalData[1].data;
-                }
-                if (includeSimilar && additionalData[2]) {
-                    enhancedDetails.similar = additionalData[2].data.results;
-                }
-                if (includeRecommendations && additionalData[3]) {
-                    enhancedDetails.recommendations = additionalData[3].data.results;
+                let credits = null;
+                if (options.includeCredits) {
+                    console.log('Fetching credits...');
+                    credits = await tmdbApi.getCredits('movie', mediaId);
+                    console.log('Got credits:', credits);
                 }
 
+                const enhancedDetails: MovieDetails = {
+                    ...movieDetails,
+                    credits: credits || undefined
+                };
+
+                console.log('Setting enhanced details:', enhancedDetails);
                 setDetails(enhancedDetails);
             } catch (err) {
-                setError(err instanceof Error ? err.message : 'Failed to fetch movie details');
+                const errorMessage = err instanceof Error ? err.message : 'Failed to fetch movie details';
+                console.error('Error in useDetails:', err);
+                setError(errorMessage);
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchDetails();
-    }, [movieId, includeCredits, includeVideos, includeSimilar, includeRecommendations]);
+        // If mediaId changes, fetch new details
+        if (mediaId) {
+            console.log('useDetails effect triggered for mediaId:', mediaId);
+            fetchDetails();
+        }
+
+        // Cleanup function
+        return () => {
+            // Optional: Add any cleanup if needed
+            console.log('useDetails cleanup for mediaId:', mediaId);
+        };
+    }, [mediaId, options.includeCredits]); // Include options.includeCredits in dependencies
 
     return {
         details,
@@ -102,5 +107,3 @@ export const useDetails = (
         hasDetails: !!details,
     };
 };
-
-export default useDetails;
