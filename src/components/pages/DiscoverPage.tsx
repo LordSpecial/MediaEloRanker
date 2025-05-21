@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useNavigate } from "react-router-dom";
 import { tmdbApiClient } from "../../services/api/tmdb/tmdbApiClient";
 import { isMovie, isTVShow } from "../../services/utils/mediaTypeGuards";
@@ -13,6 +13,7 @@ import { useAsync } from '@/hooks/common/useAsync';
 
 export const DiscoverPage = () => {
     const navigate = useNavigate();
+    const initialFetchRef = useRef(true);
 
     // Use the new useAsync hook for trending movies
     const {
@@ -69,11 +70,14 @@ export const DiscoverPage = () => {
         mediaType: 'music',
     }));
 
-    // Initialize data loading
+    // Initialize data loading only once on mount
     useEffect(() => {
-        fetchTrendingMovies();
-        fetchTrendingTV();
-    }, [fetchTrendingMovies, fetchTrendingTV]);
+        if (initialFetchRef.current) {
+            initialFetchRef.current = false;
+            fetchTrendingMovies();
+            fetchTrendingTV();
+        }
+    }, []); // empty dependency array to run only once on mount
 
     const handleRefresh = () => {
         fetchTrendingMovies();
@@ -129,7 +133,10 @@ export const DiscoverPage = () => {
                         <ErrorMessage 
                             message="Failed to load movies" 
                             details={error.message} 
-                            onRetry={reset}
+                            onRetry={() => {
+                                fetchTrendingMovies();
+                                if (reset) reset();
+                            }}
                             severity="error"
                         />
                     )}
@@ -153,7 +160,10 @@ export const DiscoverPage = () => {
                         <ErrorMessage 
                             message="Failed to load TV shows" 
                             details={error.message} 
-                            onRetry={reset}
+                            onRetry={() => {
+                                fetchTrendingTV();
+                                if (reset) reset();
+                            }}
                             severity="error"
                         />
                     )}
