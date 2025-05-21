@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, Filter, SortDesc } from 'lucide-react';
-import { EnhancedMediaCard } from '../media/EnhancedMediaCard';
+import { Loader2, Filter, SortDesc, Search } from 'lucide-react';
 import { useLibraryContext } from '../../contexts/LibraryContext';
 import { SortField } from '@/types/media/common';
+import { MediaGrid, SearchInput } from '@/components/ui/media';
+import { MediaCardProps } from '@/components/ui/media/MediaCard';
 
 interface Category {
     id: string;
@@ -41,6 +42,8 @@ export const LibraryPage = () => {
         sortOrder, 
         setSortOrder 
     } = useLibraryContext();
+    
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Handler for category change
     const handleCategoryChange = (newCategory: string) => {
@@ -53,6 +56,27 @@ export const LibraryPage = () => {
         console.log('Changing sort order to:', newSortOrder);
         setSortOrder(newSortOrder);
     };
+    
+    // Filter items by search query
+    const filteredItems = searchQuery 
+        ? mediaItems.filter(item => 
+            item.title.toLowerCase().includes(searchQuery.toLowerCase()))
+        : mediaItems;
+    
+    // Convert library items to MediaCardProps format
+    const mediaCardItems: MediaCardProps[] = filteredItems.map(item => ({
+        id: item.id,
+        title: item.title,
+        imageUrl: item.imageUrl,
+        rating: item.userRating?.toString() || 'NR',
+        year: item.releaseYear,
+        mediaType: item.type,
+    }));
+    
+    const handleCardClick = (item: MediaCardProps) => {
+        // This would typically open the media details dialog
+        console.log('Clicked media item:', item);
+    };
 
     return (
         <div className="min-h-screen bg-gray-900 pt-20 px-4">
@@ -62,9 +86,17 @@ export const LibraryPage = () => {
                     <div className="flex justify-between items-center">
                         <h1 className="text-4xl font-bold text-white">My Library</h1>
                         <span className="text-gray-400">
-              {mediaItems.length} items
-            </span>
+                            {mediaItems.length} items
+                        </span>
                     </div>
+                    
+                    {/* Search */}
+                    <SearchInput
+                        value={searchQuery}
+                        onChange={setSearchQuery}
+                        placeholder="Search your library..."
+                        className="mb-2"
+                    />
 
                     {/* Filters */}
                     <Card className="bg-gray-800 border-gray-700">
@@ -122,32 +154,13 @@ export const LibraryPage = () => {
                                 <p className="text-red-400">{error}</p>
                             </CardContent>
                         </Card>
-                    ) : loading ? (
-                        <div className="flex justify-center py-12">
-                            <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-                        </div>
-                    ) : mediaItems.length === 0 ? (
-                        <Card className="bg-gray-800 border-gray-700">
-                            <CardContent className="pt-6">
-                                <p className="text-center text-gray-400">
-                                    No items found in your library
-                                </p>
-                            </CardContent>
-                        </Card>
                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                            {mediaItems.map((item) => (
-                                <EnhancedMediaCard
-                                    key={item.id}
-                                    id={item.id}
-                                    title={item.title}
-                                    imageUrl={item.imageUrl}
-                                    rating={item.userRating?.toString() || 'Not Rated'}
-                                    year={item.releaseYear}
-                                    mediaType={item.type}
-                                />
-                            ))}
-                        </div>
+                        <MediaGrid
+                            items={mediaCardItems}
+                            loading={loading}
+                            onItemClick={handleCardClick}
+                            emptyMessage="No items found in your library"
+                        />
                     )}
                 </div>
             </div>
