@@ -1,6 +1,6 @@
 import { BaseApiClient } from '../baseApiClient';
 import { tmdbConfig, getImageUrl } from '../../config/tmdb.config';
-import type { TMDBResponse, TMDBMovie, TMDBTVShow, TMDBCredits, TMDBMediaItem } from './types';
+import { TMDBResponse, TMDBMovie, TMDBTVShow, TMDBCredits, TMDBMediaItem } from '@/types/api';
 import { ResourceNotFoundError } from '../errors';
 
 export class TMDBApiClient extends BaseApiClient {

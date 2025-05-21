@@ -12,67 +12,18 @@ import {
     updateDoc,
 } from 'firebase/firestore';
 import { db } from '../../firebase';
-
-// Base metadata interface
-export interface BaseMediaMetadata {
-    description: string;
-    genre: string[];
-}
-
-// Media-specific metadata interfaces
-export interface FilmTVMetadata extends BaseMediaMetadata {
-    director: string;
-    writers: string[];
-    cast: string[];
-    duration: string;
-}
-
-export interface AnimeMetadata extends BaseMediaMetadata {
-    studio: string;
-    director: string;
-    writers: string[];
-    cast: string[];
-    episodes: number;
-}
-
-export interface MusicMetadata extends BaseMediaMetadata {
-    artist: string;
-    album: string;
-    tracks: number;
-    label: string;
-}
-
-export type MediaMetadata = FilmTVMetadata | AnimeMetadata | MusicMetadata;
-
-export interface MediaItem {
-    id: number;
-    mediaId: string;
-    type: 'film' | 'tv' | 'anime' | 'music';
-    title: string;
-    imageUrl: string | null;
-    releaseYear: number;
-    userRating: number | null;
-    globalEloScore: number;
-    categoryEloScore: number;
-    addedAt: Date;
-    metadata?: MediaMetadata;
-}
-
-export interface AddToLibraryParams {
-    mediaId: string;
-    type: 'film' | 'tv' | 'anime' | 'music';
-    title: string;
-    releaseYear: number;
-    imageUrl: string | null;
-    metadata?: MediaMetadata;
-}
-
-type SortField = 'dateAdded' | 'globalEloScore' | 'categoryEloScore' | 'userRating';
+import {
+    MediaType,
+    MediaItem,
+    MediaMetadata,
+    AddToLibraryParams,
+    SortField
+} from '@/types/media/common';
 
 // Firestore document types
 interface LibraryDocument {
     mediaId: string;
-    type: 'film' | 'tv' | 'anime' | 'music';
+    type: MediaType;
     addedAt: any;
     userRating: number | null;
     globalEloScore: number;
@@ -84,7 +35,7 @@ interface LibraryDocument {
 
 interface MediaMetadataDocument {
     id: string;
-    type: 'film' | 'tv' | 'anime' | 'music';
+    type: MediaType;
     title: string;
     releaseYear: number;
     imageUrl: string | null;
@@ -223,13 +174,13 @@ export const libraryService = {
                 }
 
                 const mediaItem: MediaItemWithOptionalMetadata = {
-                    id: parseInt(document.id),
+                    id: document.id,
                     mediaId: libraryData.mediaId,
                     type: libraryData.type,
                     title: mediaMetadata.title,
                     imageUrl: mediaMetadata.imageUrl,
                     releaseYear: mediaMetadata.releaseYear,
-                    userRating: libraryData.userRating,
+                    userRating: libraryData.userRating || undefined,
                     globalEloScore: libraryData.globalEloScore,
                     categoryEloScore: libraryData.categoryEloScore,
                     addedAt: libraryData.addedAt?.toDate() || new Date(),

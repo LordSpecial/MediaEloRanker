@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, Filter, SortDesc } from 'lucide-react';
 import { EnhancedMediaCard } from '../media/EnhancedMediaCard';
 import { useLibraryContext } from '../../contexts/LibraryContext';
-import { SortField } from '@/types/media';
+import { SortField } from '@/types/media/common';
 
 interface Category {
     id: string;

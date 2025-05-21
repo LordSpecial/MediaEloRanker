@@ -4,7 +4,7 @@ import { libraryService } from '../../services/firebase/libraryService';
 import { tmdbApiClient } from '../../services/api/tmdb';
 import { toast } from '@/components/ui/use-toast';
 import { convertTMDBToMetadata } from "../../services/utils/mediaTransforms";
-import { AddToLibraryParams, MediaMetadata } from '@/types/media';
+import { AddToLibraryParams, MediaMetadata, MediaType } from '@/types/media/common';
 import { ApiError } from '../../services/api/errors';
 
 interface UseLibraryActionsReturn {
@@ -58,7 +58,7 @@ export const useLibraryActions = (): UseLibraryActionsReturn => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const fetchMediaMetadata = async (mediaId: string, type: 'film' | 'tv'): Promise<MediaMetadata> => {
+    const fetchMediaMetadata = async (mediaId: string, type: MediaType): Promise<MediaMetadata> => {
         try {
             console.log('Fetching metadata for:', { mediaId, type });
 

@@ -1,6 +1,6 @@
 import { useLibraryItems } from './useLibraryItems';
 import { useLibraryActions } from './useLibraryActions';
-import { SortField } from '@/types/media';
+import { SortField } from '@/types/media/common';
 
 // Re-export the hooks
 export { useLibraryItems } from './useLibraryItems';

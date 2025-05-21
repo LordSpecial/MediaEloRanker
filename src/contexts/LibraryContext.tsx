@@ -1,7 +1,7 @@
 import React, { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import { useLibraryItems } from '../hooks/library/useLibraryItems';
 import { useLibraryActions } from '../hooks/library/useLibraryActions';
-import { AddToLibraryParams, MediaItem, MediaMetadata, SortField } from '@/types/media';
+import { AddToLibraryParams, MediaItem, MediaMetadata, SortField } from '@/types/media/common';
 
 // Define the context value type
 interface LibraryContextType {

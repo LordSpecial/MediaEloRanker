@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../useAuth';
 import { libraryService } from '../../services/firebase/libraryService';
 import { toast } from '@/components/ui/use-toast';
-import { MediaItem, SortField } from '@/types/media';
+import { MediaItem, SortField } from '@/types/media/common';
 
 interface UseLibraryItemsProps {
     category?: string;

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { tmdbApiClient } from '../../services/api/tmdb';
-import { TMDBMovie, TMDBTVShow } from '../../services/api/tmdb';
+import { TMDBMovie, TMDBTVShow, TMDBCredits } from '@/types/api/tmdb';
 import { ApiError } from '../../services/api/errors';
 
 interface UseDetailsOptions {
@@ -8,7 +8,16 @@ interface UseDetailsOptions {
     includeVideos?: boolean;
 }
 
-type MediaDetails = TMDBMovie | TMDBTVShow;
+// Extended type to include credits in the details
+interface TMDBMovieWithCredits extends TMDBMovie {
+    credits?: TMDBCredits;
+}
+
+interface TMDBTVShowWithCredits extends TMDBTVShow {
+    credits?: TMDBCredits;
+}
+
+type MediaDetails = TMDBMovieWithCredits | TMDBTVShowWithCredits;
 
 export const useDetails = (id: number | null, options: UseDetailsOptions = {}) => {
     const [details, setDetails] = useState<MediaDetails | null>(null);
@@ -26,14 +35,14 @@ export const useDetails = (id: number | null, options: UseDetailsOptions = {}) =
                 // Try to fetch as a movie first
                 try {
                     const movieDetails = await tmdbApiClient.getMovieDetails(id);
-                    setDetails(movieDetails);
+                    setDetails(movieDetails as TMDBMovieWithCredits);
                     return;
                 } catch (err) {
                     // If not a movie, try as a TV show
                     if (err instanceof ApiError && err.status === 404) {
                         try {
                             const tvDetails = await tmdbApiClient.getTVShowDetails(id);
-                            setDetails(tvDetails);
+                            setDetails(tvDetails as TMDBTVShowWithCredits);
                             return;
                         } catch (tvErr) {
                             // If both fail, throw the TV error

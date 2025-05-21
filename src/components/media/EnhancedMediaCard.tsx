@@ -19,7 +19,7 @@ import { AnimeMetadata } from '@/types/media/anime';
 import { MusicMetadata } from '@/types/media/music';
 
 export interface MediaCardProps {
-    id?: number;
+    id?: number | string;
     title: string;
     imageUrl: string | null;
     rating: string;
