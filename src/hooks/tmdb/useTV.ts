@@ -1,5 +1,5 @@
 import { tmdbApiClient } from '../../services/api/tmdb/tmdbApiClient';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { TMDBTVShow, TMDBMediaItem } from '@/types/api/tmdb';
 import { TMDBResponse } from '@/types/api';
 import { ApiError } from '../../services/api/errors';
@@ -19,6 +19,8 @@ export const useTV = (category: TVCategory = 'popular', initialPage: number = 1)
     const [totalPages, setTotalPages] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const isInitialMount = useRef(true);
+    const prevCategory = useRef(category);
 
     const fetchTVShows = useCallback(async (currentPage = page, replace = true) => {
         try {
@@ -54,7 +56,19 @@ export const useTV = (category: TVCategory = 'popular', initialPage: number = 1)
 
     // Initial fetch
     useEffect(() => {
-        fetchTVShows(initialPage, true);
+        // Only replace items when category changes, not when page changes
+        const categoryChanged = prevCategory.current !== category;
+        const shouldReplace = isInitialMount.current || categoryChanged;
+        
+        if (shouldReplace) {
+            // Reset to page 1 when category changes
+            fetchTVShows(initialPage, true);
+            prevCategory.current = category;
+        }
+        
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
+        }
     }, [category, initialPage, fetchTVShows]);
 
     // Additional methods needed by TVExplorePage
