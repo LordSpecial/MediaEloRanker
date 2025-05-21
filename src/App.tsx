@@ -9,6 +9,7 @@ import { useAuth } from './hooks/useAuth';
 import { MovieExplorePage } from "./components/media/MovieExplorePage.tsx";
 import { Toaster } from "./components/ui/toaster.tsx";
 import { TVExplorePage } from "./components/media/TVExplorePage.tsx";
+import { LibraryProvider } from './contexts/LibraryContext';
 
 // Simple loading component
 const Loading = () => <div>Loading...</div>;
@@ -42,108 +43,110 @@ const App = () => {
 
     return (
         <Router>
-            <div className="dark-theme">
-                <Routes>
-                    {/* Public routes */}
-                    <Route
-                        path="/login"
-                        element={shouldRedirectToProfile ? <Navigate to="/home" /> : <Login />}
-                    />
-                    <Route
-                        path="/register"
-                        element={
-                            user && !user.emailVerified ? (
-                                <Register />
-                            ) : shouldRedirectToProfile ? (
-                                <Navigate to="/home" />
-                            ) : (
-                                <Register />
-                            )
-                        }
-                    />
+            <LibraryProvider>
+                <div className="dark-theme">
+                    <Routes>
+                        {/* Public routes */}
+                        <Route
+                            path="/login"
+                            element={shouldRedirectToProfile ? <Navigate to="/home" /> : <Login />}
+                        />
+                        <Route
+                            path="/register"
+                            element={
+                                user && !user.emailVerified ? (
+                                    <Register />
+                                ) : shouldRedirectToProfile ? (
+                                    <Navigate to="/home" />
+                                ) : (
+                                    <Register />
+                                )
+                            }
+                        />
 
-                    {/* Protected routes */}
-                    <Route
-                        path="/home"
-                        element={
-                            <ProtectedRoute>
-                                <HomePage />
-                            </ProtectedRoute>
-                        }
-                    />
-                    <Route
-                        path="/discover"
-                        element={
-                            <ProtectedRoute>
-                                <DiscoverPage />
-                            </ProtectedRoute>
-                        }
-                    />
-                    <Route
-                        path="/explore/movies"
-                        element={
-                            <ProtectedRoute>
-                                <MovieExplorePage />
-                            </ProtectedRoute>
-                        }
-                    />
-                    <Route
-                        path="/explore/tv"
-                        element={
-                            <ProtectedRoute>
-                                <TVExplorePage />
-                            </ProtectedRoute>
-                        }
-                    />
-                    <Route
-                        path="/explore/:mediaType"
-                        element={
-                            <ProtectedRoute>
-                                <MediaExplorePage />
-                            </ProtectedRoute>
-                        }
-                    />
-                    <Route
-                        path="/rank"
-                        element={
-                            <ProtectedRoute>
-                                <RankPage />
-                            </ProtectedRoute>
-                        }
-                    />
-                    <Route
-                        path="/library"
-                        element={
-                            <ProtectedRoute>
-                                <LibraryPage />
-                            </ProtectedRoute>
-                        }
-                    />
-                    <Route
-                        path="/profile"
-                        element={
-                            <ProtectedRoute>
-                                <ProfilePage />
-                            </ProtectedRoute>
-                        }
-                    />
+                        {/* Protected routes */}
+                        <Route
+                            path="/home"
+                            element={
+                                <ProtectedRoute>
+                                    <HomePage />
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="/discover"
+                            element={
+                                <ProtectedRoute>
+                                    <DiscoverPage />
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="/explore/movies"
+                            element={
+                                <ProtectedRoute>
+                                    <MovieExplorePage />
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="/explore/tv"
+                            element={
+                                <ProtectedRoute>
+                                    <TVExplorePage />
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="/explore/:mediaType"
+                            element={
+                                <ProtectedRoute>
+                                    <MediaExplorePage />
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="/rank"
+                            element={
+                                <ProtectedRoute>
+                                    <RankPage />
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="/library"
+                            element={
+                                <ProtectedRoute>
+                                    <LibraryPage />
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="/profile"
+                            element={
+                                <ProtectedRoute>
+                                    <ProfilePage />
+                                </ProtectedRoute>
+                            }
+                        />
 
-                    {/* Default redirect */}
-                    <Route
-                        path="*"
-                        element={
-                            <Navigate to={
-                                shouldRedirectToProfile
-                                    ? "/home"
-                                    : user && !user.emailVerified
-                                        ? "/register"
-                                        : "/login"
-                            } />
-                        }
-                    />
-                </Routes>
-                <Toaster />
-            </div>
+                        {/* Default redirect */}
+                        <Route
+                            path="*"
+                            element={
+                                <Navigate to={
+                                    shouldRedirectToProfile
+                                        ? "/home"
+                                        : user && !user.emailVerified
+                                            ? "/register"
+                                            : "/login"
+                                } />
+                            }
+                        />
+                    </Routes>
+                    <Toaster />
+                </div>
+            </LibraryProvider>
         </Router>
     );
 };

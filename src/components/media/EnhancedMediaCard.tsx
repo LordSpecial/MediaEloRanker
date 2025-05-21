@@ -10,10 +10,10 @@ import {
     DialogDescription,
 } from "../ui/dialog";
 import { Slider } from "../ui/slider";
-import { useLibrary } from "../../hooks/useLibrary";
+import { useLibraryContext } from "../../contexts/LibraryContext";
 import { convertTMDBToMetadata } from "../../services/utils/mediaTransforms";
 import { useDetails } from "../../hooks/tmdb";
-import type { MediaMetadata, FilmTVMetadata, AnimeMetadata, MusicMetadata } from "../../hooks/useLibrary";
+import type { MediaMetadata, FilmTVMetadata, AnimeMetadata, MusicMetadata } from "@/types/media";
 
 export interface MediaCardProps {
     id?: number;
@@ -37,7 +37,7 @@ export const EnhancedMediaCard: React.FC<MediaCardProps> = ({
                                                                 userRating: initialUserRating
                                                             }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const { addToLibrary, checkInLibrary, getMediaMetadata, loading: libraryLoading, updateUserRating } = useLibrary();
+    const { addToLibrary, checkInLibrary, getMediaMetadata, loading: libraryLoading, updateUserRating, updateMediaMetadata } = useLibraryContext();
     const [isInLibrary, setIsInLibrary] = useState(false);
     const [checkingLibrary, setCheckingLibrary] = useState(false);
     const [userRating, setUserRating] = useState<number | undefined>(initialUserRating);
@@ -211,7 +211,7 @@ export const EnhancedMediaCard: React.FC<MediaCardProps> = ({
 
                 // If item is in library and metadata was incomplete, update it
                 if (isInLibrary && id) {
-                    await useLibrary().updateMediaMetadata(id.toString(), newMetadata);
+                    await updateMediaMetadata(id.toString(), newMetadata);
                     console.log('Updated stored metadata with TMDB data');
                 }
             } catch (error) {
@@ -227,7 +227,7 @@ export const EnhancedMediaCard: React.FC<MediaCardProps> = ({
         if (isOpen && details?.credits && (!isInLibrary || isMetadataIncomplete(metadata))) {
             updateMetadataFromTMDB();
         }
-    }, [details, isOpen, isInLibrary, metadata, id]);
+    }, [details, isOpen, isInLibrary, metadata, id, updateMediaMetadata]);
 
     // Re-check library status when dialog opens
     useEffect(() => {

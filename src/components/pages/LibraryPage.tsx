@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, Filter, SortDesc } from 'lucide-react';
 import { EnhancedMediaCard } from '../media/EnhancedMediaCard';
-import { useLibrary, SortField } from '../../hooks/useLibrary';
+import { useLibraryContext } from '../../contexts/LibraryContext';
+import { SortField } from '@/types/media';
 
 interface Category {
     id: string;
@@ -30,25 +31,27 @@ const sortOptions: SortOption[] = [
 ];
 
 export const LibraryPage = () => {
-    const [activeCategory, setActiveCategory] = useState('all');
-    const [sortOrder, setSortOrder] = useState<SortField>('dateAdded');
-
-    // Pass the current state values to the hook
-    const { mediaItems, loading, error } = useLibrary({
-        category: activeCategory,
-        sortOrder: sortOrder
-    });
+    // Use filter state directly from context
+    const { 
+        mediaItems, 
+        loading, 
+        error, 
+        category, 
+        setCategory, 
+        sortOrder, 
+        setSortOrder 
+    } = useLibraryContext();
 
     // Handler for category change
-    const handleCategoryChange = (category: string) => {
-        console.log('Changing category to:', category);
-        setActiveCategory(category);
+    const handleCategoryChange = (newCategory: string) => {
+        console.log('Changing category to:', newCategory);
+        setCategory(newCategory);
     };
 
     // Handler for sort order change
-    const handleSortChange = (sort: SortField) => {
-        console.log('Changing sort order to:', sort);
-        setSortOrder(sort);
+    const handleSortChange = (newSortOrder: SortField) => {
+        console.log('Changing sort order to:', newSortOrder);
+        setSortOrder(newSortOrder);
     };
 
     return (
@@ -72,17 +75,17 @@ export const LibraryPage = () => {
                                     <span className="text-gray-300">Filter by:</span>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
-                                    {categories.map((category) => (
+                                    {categories.map((categoryOption) => (
                                         <button
-                                            key={category.id}
-                                            onClick={() => handleCategoryChange(category.id)}
+                                            key={categoryOption.id}
+                                            onClick={() => handleCategoryChange(categoryOption.id)}
                                             className={`px-4 py-2 rounded-full text-sm transition-colors ${
-                                                activeCategory === category.id
+                                                category === categoryOption.id
                                                     ? 'bg-blue-600 text-white'
                                                     : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                                             }`}
                                         >
-                                            {category.label}
+                                            {categoryOption.label}
                                         </button>
                                     ))}
                                 </div>
