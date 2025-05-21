@@ -13,7 +13,10 @@ import { Slider } from "../ui/slider";
 import { useLibraryContext } from "../../contexts/LibraryContext";
 import { convertTMDBToMetadata } from "../../services/utils/mediaTransforms";
 import { useDetails } from "../../hooks/tmdb";
-import type { MediaMetadata, FilmTVMetadata, AnimeMetadata, MusicMetadata } from "@/types/media";
+import { MediaType, MediaMetadata } from '@/types/media/common';
+import { FilmTVMetadata } from '@/types/media/movie';
+import { AnimeMetadata } from '@/types/media/anime';
+import { MusicMetadata } from '@/types/media/music';
 
 export interface MediaCardProps {
     id?: number;
@@ -21,7 +24,7 @@ export interface MediaCardProps {
     imageUrl: string | null;
     rating: string;
     year: number;
-    mediaType: 'film' | 'tv' | 'anime' | 'music';
+    mediaType: MediaType;
     metadata?: MediaMetadata;
     userRating?: number;
 }
