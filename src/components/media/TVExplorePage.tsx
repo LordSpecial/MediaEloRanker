@@ -12,10 +12,13 @@ import {
     CategoryTabs 
 } from '@/components/ui/media';
 import { MediaCardProps } from '@/components/ui/media/MediaCard';
+import { MediaDetailsDialogWrapper } from '@/components/ui/discover/MediaDetailsDialogWrapper';
 
 export const TVExplorePage: React.FC = () => {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<'popular' | 'top_rated' | 'trending' | 'random'>('popular');
+    const [selectedMedia, setSelectedMedia] = useState<MediaCardProps | null>(null);
+    const [dialogOpen, setDialogOpen] = useState(false);
 
     const {
         shows,
@@ -52,8 +55,14 @@ export const TVExplorePage: React.FC = () => {
     ];
 
     const handleCardClick = (item: MediaCardProps) => {
-        // Handle card click - show details dialog
-        // This will be integrated with EnhancedMediaCard later
+        console.log('Clicked on TV show:', item);
+        setSelectedMedia(item);
+        setDialogOpen(true);
+    };
+
+    const handleCloseDialog = () => {
+        setDialogOpen(false);
+        setSelectedMedia(null);
     };
 
     const filteredShows = displayedShows
@@ -130,6 +139,13 @@ export const TVExplorePage: React.FC = () => {
                         </Button>
                     </div>
                 )}
+                
+                {/* Media Details Dialog */}
+                <MediaDetailsDialogWrapper 
+                    isOpen={dialogOpen}
+                    onClose={handleCloseDialog}
+                    media={selectedMedia}
+                />
             </div>
         </div>
     );

@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, Filter, SortDesc, Search } from 'lucide-react';
 import { useLibraryContext } from '../../contexts/LibraryContext';
 import { SortField } from '@/types/media/common';
 import { MediaGrid, SearchInput } from '@/components/ui/media';
 import { MediaCardProps } from '@/components/ui/media/MediaCard';
+import { LibraryItemDetailsDialog } from '@/components/ui/library/LibraryItemDetailsDialog';
 
 interface Category {
     id: string;
@@ -40,10 +41,14 @@ export const LibraryPage = () => {
         category, 
         setCategory, 
         sortOrder, 
-        setSortOrder 
+        setSortOrder,
+        refetch
     } = useLibraryContext();
     
     const [searchQuery, setSearchQuery] = useState('');
+    const [selectedItem, setSelectedItem] = useState<MediaCardProps | null>(null);
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [localMediaItems, setLocalMediaItems] = useState<MediaCardProps[]>([]);
 
     // Handler for category change
     const handleCategoryChange = (newCategory: string) => {
@@ -73,10 +78,35 @@ export const LibraryPage = () => {
         mediaType: item.type,
     }));
     
+    // Update local state when parent items change
+    React.useEffect(() => {
+        setLocalMediaItems(mediaCardItems);
+    }, [mediaCardItems]);
+    
     const handleCardClick = (item: MediaCardProps) => {
-        // This would typically open the media details dialog
         console.log('Clicked media item:', item);
+        setSelectedItem(item);
+        setDialogOpen(true);
     };
+
+    const handleCloseDialog = () => {
+        setDialogOpen(false);
+        setSelectedItem(null);
+    };
+    
+    // Handle rating updates from the dialog
+    const handleRatingUpdate = useCallback((id: string, newRating: number) => {
+        console.log('Rating updated:', id, newRating);
+        
+        // Update the item in our local state to reflect the change immediately
+        setLocalMediaItems(prevItems => 
+            prevItems.map(item => 
+                item.id?.toString() === id
+                    ? { ...item, rating: newRating.toString() }
+                    : item
+            )
+        );
+    }, []);
 
     return (
         <div className="min-h-screen bg-gray-900 pt-20 px-4">
@@ -156,13 +186,21 @@ export const LibraryPage = () => {
                         </Card>
                     ) : (
                         <MediaGrid
-                            items={mediaCardItems}
+                            items={localMediaItems}
                             loading={loading}
                             onItemClick={handleCardClick}
                             emptyMessage="No items found in your library"
                         />
                     )}
                 </div>
+
+                {/* Library Item Details Dialog */}
+                <LibraryItemDetailsDialog 
+                    isOpen={dialogOpen}
+                    onClose={handleCloseDialog}
+                    mediaItem={selectedItem}
+                    onRatingUpdate={handleRatingUpdate}
+                />
             </div>
         </div>
     );

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from "react-router-dom";
 import { tmdbApiClient } from "../../services/api/tmdb/tmdbApiClient";
 import { isMovie, isTVShow } from "../../services/utils/mediaTypeGuards";
@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Search, RefreshCw } from 'lucide-react';
 import { MediaCarousel } from '@/components/ui/media';
 import { MediaCardProps } from '@/components/ui/media/MediaCard';
+import { MediaDetailsDialogWrapper } from '@/components/ui/discover/MediaDetailsDialogWrapper';
 import { AsyncBoundary } from '@/components/ui/AsyncBoundary';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { useAsync } from '@/hooks/common/useAsync';
@@ -14,6 +15,8 @@ import { useAsync } from '@/hooks/common/useAsync';
 export const DiscoverPage = () => {
     const navigate = useNavigate();
     const initialFetchRef = useRef(true);
+    const [selectedMedia, setSelectedMedia] = useState<MediaCardProps | null>(null);
+    const [dialogOpen, setDialogOpen] = useState(false);
 
     // Use the new useAsync hook for trending movies
     const {
@@ -86,7 +89,13 @@ export const DiscoverPage = () => {
 
     const handleCardClick = (item: MediaCardProps) => {
         console.log('Clicked on:', item);
-        // Navigate or show details
+        setSelectedMedia(item);
+        setDialogOpen(true);
+    };
+
+    const handleCloseDialog = () => {
+        setDialogOpen(false);
+        setSelectedMedia(null);
     };
 
     return (
@@ -192,6 +201,13 @@ export const DiscoverPage = () => {
                     items={musicItems}
                     onExplore={() => navigate('/explore/music')}
                     onItemClick={handleCardClick}
+                />
+
+                {/* Use the wrapper for the detailed dialog */}
+                <MediaDetailsDialogWrapper 
+                    isOpen={dialogOpen}
+                    onClose={handleCloseDialog}
+                    media={selectedMedia}
                 />
             </div>
         </div>
