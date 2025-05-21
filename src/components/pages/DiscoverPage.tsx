@@ -1,31 +1,61 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
-import { useMovies, useTV } from "../../hooks/tmdb";
+import { tmdbApiClient, TMDBMovie, TMDBTVShow } from "../../services/api/tmdb";
 import { formatMediaItem } from "../../services/utils/mediaUtils.ts";
 import { MediaCarousel, generateMockMediaItems } from '../media/MediaComponents';
+import { MediaCardProps } from '../media/EnhancedMediaCard';
 
 export const DiscoverPage = () => {
     const navigate = useNavigate();
-    const { movies: trendingMovies, loading: moviesLoading } = useMovies('trending', { timeWindow: 'week' });
-    const { shows: trendingTV, loading: tvLoading } = useTV('trending', { timeWindow: 'week' });
+    const [trendingMovies, setTrendingMovies] = useState<TMDBMovie[]>([]);
+    const [trendingTV, setTrendingTV] = useState<TMDBTVShow[]>([]);
+    const [moviesLoading, setMoviesLoading] = useState(true);
+    const [tvLoading, setTVLoading] = useState(true);
+
+    // Fetch trending movies and TV shows
+    useEffect(() => {
+        const fetchTrending = async () => {
+            try {
+                // Fetch trending movies
+                setMoviesLoading(true);
+                const moviesResponse = await tmdbApiClient.getTrending('movie', 'week');
+                setTrendingMovies(moviesResponse.results as TMDBMovie[]);
+                setMoviesLoading(false);
+
+                // Fetch trending TV shows
+                setTVLoading(true);
+                const tvResponse = await tmdbApiClient.getTrending('tv', 'week');
+                setTrendingTV(tvResponse.results as TMDBTVShow[]);
+                setTVLoading(false);
+            } catch (error) {
+                console.error('Error fetching trending content:', error);
+                setMoviesLoading(false);
+                setTVLoading(false);
+            }
+        };
+
+        fetchTrending();
+    }, []);
 
     // Format and type-check the media items
-    const formattedMovies = React.useMemo(() =>
-            trendingMovies.map(formatMediaItem),
-        [trendingMovies]
-    );
+    const formattedMovies = React.useMemo((): MediaCardProps[] => 
+        trendingMovies.map(movie => ({
+            ...formatMediaItem(movie),
+            id: movie.id // Ensure id is a number for EnhancedMediaCard
+        })),
+    [trendingMovies]);
 
-    const formattedTVShows = React.useMemo(() =>
-            trendingTV.map(formatMediaItem),
-        [trendingTV]
-    );
+    const formattedTVShows = React.useMemo((): MediaCardProps[] => 
+        trendingTV.map(show => ({
+            ...formatMediaItem(show),
+            id: show.id // Ensure id is a number for EnhancedMediaCard
+        })),
+    [trendingTV]);
 
-    // Note: We have to deal with a type mismatch between MediaCardProps in MediaComponents.tsx (id?: string)
-    // and EnhancedMediaCard.tsx (id?: number)
-    // Transform mock data to match expected format with string IDs
-    const formatMockItems = (items: ReturnType<typeof generateMockMediaItems>, type: 'anime' | 'music') => {
+    // Transform mock data to match expected format with numeric IDs
+    const formatMockItems = (items: ReturnType<typeof generateMockMediaItems>, type: 'anime' | 'music'): MediaCardProps[] => {
         return items.map((item, index) => ({
-            id: String(index), // Convert to string to match MediaCardProps in MediaComponents.tsx
+            id: index, // Use number for EnhancedMediaCard
             title: item.title,
             imageUrl: null,
             rating: item.rating,
@@ -38,24 +68,28 @@ export const DiscoverPage = () => {
         {
             title: 'Trending Movies',
             type: 'movies',
+            routePath: '/explore/movies',
             items: formattedMovies,
             loading: moviesLoading
         },
         {
             title: 'Popular TV Shows',
             type: 'tv',
+            routePath: '/explore/tv',
             items: formattedTVShows,
             loading: tvLoading
         },
         {
             title: 'Popular Anime',
             type: 'anime',
+            routePath: '/explore/anime',
             items: formatMockItems(generateMockMediaItems(10), 'anime'),
             loading: false
         },
         {
             title: 'Hot Albums',
             type: 'music',
+            routePath: '/explore/music',
             items: formatMockItems(generateMockMediaItems(10), 'music'),
             loading: false
         }
@@ -71,7 +105,7 @@ export const DiscoverPage = () => {
                         key={category.type}
                         title={category.title}
                         items={category.items}
-                        onExplore={() => navigate(`/explore/${category.type}`)}
+                        onExplore={() => navigate(category.routePath)}
                         loading={category.loading}
                     />
                 ))}

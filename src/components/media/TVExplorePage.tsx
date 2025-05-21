@@ -8,6 +8,7 @@ import { EnhancedMediaCard } from './EnhancedMediaCard';
 import { useTV } from '../../hooks/tmdb/useTV';
 import { useSearch } from '../../hooks/tmdb/useSearch';
 import {isRegularTVShow} from "../../services/utils/mediaTypeGuards.ts";
+import { getImageUrl } from '../../services/config/tmdb.config';
 
 const CategoryTab: React.FC<{
     icon: React.ElementType;
@@ -114,7 +115,7 @@ export const TVExplorePage: React.FC = () => {
                                         key={show.id}
                                         id={show.id}
                                         title={show.name}
-                                        imageUrl={show.poster_path ? `${import.meta.env.VITE_TMDB_IMAGE_BASE_URL}/w500${show.poster_path}` : null}
+                                        imageUrl={getImageUrl(show.poster_path)}
                                         rating={(show.vote_average / 2).toFixed(1)}
                                         year={new Date(show.first_air_date).getFullYear()}
                                         mediaType="tv"

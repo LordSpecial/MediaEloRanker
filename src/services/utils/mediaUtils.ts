@@ -1,6 +1,7 @@
-import { TMDBMovie, TMDBTVShow, TMDBMediaItem } from '../api/tmdb/types';
-import { getImageUrl } from '../config/tmdb.config';
+import { TMDBMovie, TMDBTVShow, TMDBMediaItem } from '../api/tmdb';
+import { tmdbApiClient } from '../api/tmdb';
 import type { MediaCardProps } from '../../components/media/EnhancedMediaCard';
+import { getImageUrl } from '../config/tmdb.config';
 
 export const isMovie = (media: TMDBMediaItem): media is TMDBMovie => {
     return 'title' in media && 'release_date' in media;
@@ -15,7 +16,7 @@ export const formatMediaItem = (item: TMDBMediaItem): MediaCardProps => {
     return {
         id: item.id,
         title: isMovie(item) ? item.title : item.name,
-        imageUrl: item.poster_path ? getImageUrl(item.poster_path) : null,
+        imageUrl: getImageUrl(item.poster_path),
         rating: (item.vote_average / 2).toFixed(1),
         year: isNaN(year) ? new Date().getFullYear() : year,
         mediaType: isMovie(item) ? 'film' : 'tv'

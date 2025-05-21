@@ -1,10 +1,11 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from '../useAuth';
 import { libraryService } from '../../services/firebase/libraryService';
+import { tmdbApiClient } from '../../services/api/tmdb';
 import { toast } from '@/components/ui/use-toast';
-import { tmdbApi } from "../../services/api/tmdb/tmdbApi";
 import { convertTMDBToMetadata } from "../../services/utils/mediaTransforms";
 import { AddToLibraryParams, MediaMetadata } from '@/types/media';
+import { ApiError } from '../../services/api/errors';
 
 interface UseLibraryActionsReturn {
     loading: boolean;
@@ -62,20 +63,23 @@ export const useLibraryActions = (): UseLibraryActionsReturn => {
             console.log('Fetching metadata for:', { mediaId, type });
 
             if (type === 'film') {
-                const details = await tmdbApi.getMovieDetails(mediaId);
-                const credits = await tmdbApi.getCredits('movie', mediaId);
+                const details = await tmdbApiClient.getMovieDetails(mediaId);
+                const credits = await tmdbApiClient.getCredits('movie', mediaId);
                 console.log('Got movie details:', details);
                 return convertTMDBToMetadata(details, credits);
             } else if (type === 'tv') {
-                const details = await tmdbApi.getTVShowDetails(mediaId);
-                const credits = await tmdbApi.getCredits('tv', mediaId);
+                const details = await tmdbApiClient.getTVShowDetails(mediaId);
+                const credits = await tmdbApiClient.getCredits('tv', mediaId);
                 console.log('Got TV details:', details);
                 return convertTMDBToMetadata(details, credits);
             }
             throw new Error('Unsupported media type');
-        } catch (error) {
-            console.error('Error fetching media metadata:', error);
-            throw error;
+        } catch (err) {
+            console.error('Error fetching media metadata:', err);
+            const errorMessage = err instanceof ApiError 
+                ? err.message 
+                : 'Failed to fetch media metadata';
+            throw new Error(errorMessage);
         }
     };
 

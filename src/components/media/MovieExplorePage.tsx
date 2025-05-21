@@ -7,6 +7,7 @@ import { Search, Compass, Shuffle, TrendingUp, Star } from 'lucide-react';
 import { EnhancedMediaCard } from './EnhancedMediaCard';
 import { useMovies, useSearch } from '../../hooks/tmdb';
 import {isMovie} from "../../services/utils/mediaUtils.ts";
+import { getImageUrl } from '../../services/config/tmdb.config';
 
 const CategoryTab: React.FC<{
     icon: React.ElementType;
@@ -129,7 +130,7 @@ export const MovieExplorePage: React.FC = () => {
                                         key={movie.id}
                                         id={movie.id}
                                         title={movie.title}
-                                        imageUrl={movie.poster_path ? `${import.meta.env.VITE_TMDB_IMAGE_BASE_URL}/w500${movie.poster_path}` : null}
+                                        imageUrl={getImageUrl(movie.poster_path)}
                                         rating={(movie.vote_average / 2).toFixed(1)}
                                         year={new Date(movie.release_date).getFullYear()}
                                         mediaType="film"

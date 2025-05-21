@@ -2,9 +2,10 @@ import React from 'react';
 import {Card, CardContent} from '../ui/card';
 import {Compass} from 'lucide-react';
 import {Skeleton} from '../ui/skeleton';
-import {EnhancedMediaCard} from "./EnhancedMediaCard.tsx";
+import {EnhancedMediaCard, MediaCardProps} from "./EnhancedMediaCard.tsx";
 
-interface MediaCardProps {
+// This interface is kept for backward compatibility
+interface LegacyMediaCardProps {
     id?: string;
     title: string;
     imageUrl: string | null;

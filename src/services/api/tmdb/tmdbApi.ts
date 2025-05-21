@@ -1,143 +1,54 @@
-import axios from 'axios';
-import { tmdbConfig } from '../../config/tmdb.config';
-import type { TMDBResponse, TMDBMovie, TMDBTVShow, TMDBCredits } from './types';
+import { tmdbApiClient } from './tmdbApiClient';
 
-const api = axios.create({
-    baseURL: tmdbConfig.baseUrl,
-    params: {
-        api_key: tmdbConfig.apiKey,
-    },
-});
-
+/**
+ * @deprecated Use tmdbApiClient from './tmdbApiClient' instead
+ * This module is maintained for backward compatibility
+ */
 export const tmdbApi = {
     // Movie methods
     getMovies: async (category: string, params?: { page?: number }) => {
-        try {
-            const response = await api.get<TMDBResponse<TMDBMovie>>(`/movie/${category}`, {
-                params: {
-                    ...params,
-                    language: 'en-US'
-                }
-            });
-            return response.data;
-        } catch (error) {
-            console.error('TMDB API Error:', error);
-            throw error;
-        }
+        console.warn('tmdbApi is deprecated. Use tmdbApiClient instead.');
+        return tmdbApiClient.getMovies(category, params);
     },
 
     // TV Show methods
     getTVShows: async (category: string, params?: { page?: number }) => {
-        try {
-            const response = await api.get<TMDBResponse<TMDBTVShow>>(`/tv/${category}`, {
-                params: {
-                    ...params,
-                    language: 'en-US'
-                }
-            });
-            return response.data;
-        } catch (error) {
-            console.error('TMDB API Error:', error);
-            throw error;
-        }
+        console.warn('tmdbApi is deprecated. Use tmdbApiClient instead.');
+        return tmdbApiClient.getTVShows(category, params);
     },
 
     // Trending methods
     getTrending: async (mediaType: 'movie' | 'tv', timeWindow: 'day' | 'week' = 'week', page: number = 1) => {
-        try {
-            const response = await api.get<TMDBResponse<TMDBMovie | TMDBTVShow>>(
-                `/trending/${mediaType}/${timeWindow}`,
-                {
-                    params: {
-                        page,
-                        language: 'en-US'
-                    }
-                }
-            );
-            return response.data;
-        } catch (error) {
-            console.error('TMDB API Error:', error);
-            throw error;
-        }
+        console.warn('tmdbApi is deprecated. Use tmdbApiClient instead.');
+        return tmdbApiClient.getTrending(mediaType, timeWindow, page);
     },
 
     // Search methods
     searchMovies: async (query: string, page: number = 1) => {
-        try {
-            const response = await api.get<TMDBResponse<TMDBMovie>>('/search/movie', {
-                params: {
-                    query,
-                    page,
-                    language: 'en-US'
-                }
-            });
-            return response.data;
-        } catch (error) {
-            console.error('TMDB API Error:', error);
-            throw error;
-        }
+        console.warn('tmdbApi is deprecated. Use tmdbApiClient instead.');
+        return tmdbApiClient.searchMovies(query, page);
     },
 
     searchTVShows: async (query: string, page: number = 1) => {
-        try {
-            const response = await api.get<TMDBResponse<TMDBTVShow>>('/search/tv', {
-                params: {
-                    query,
-                    page,
-                    language: 'en-US'
-                }
-            });
-            return response.data;
-        } catch (error) {
-            console.error('TMDB API Error:', error);
-            throw error;
-        }
+        console.warn('tmdbApi is deprecated. Use tmdbApiClient instead.');
+        return tmdbApiClient.searchTVShows(query, page);
     },
 
     // Get detailed movie information
     getMovieDetails: async (movieId: string | number) => {
-        try {
-            const response = await api.get<TMDBMovie>(`/movie/${movieId}`, {
-                params: {
-                    language: 'en-US',
-                    append_to_response: 'credits,videos'
-                }
-            });
-            return response.data;
-        } catch (error) {
-            console.error('TMDB API Error:', error);
-            throw error;
-        }
+        console.warn('tmdbApi is deprecated. Use tmdbApiClient instead.');
+        return tmdbApiClient.getMovieDetails(movieId);
     },
 
     // Get detailed TV show information
     getTVShowDetails: async (tvId: string | number) => {
-        try {
-            const response = await api.get<TMDBTVShow>(`/tv/${tvId}`, {
-                params: {
-                    language: 'en-US',
-                    append_to_response: 'credits,videos'
-                }
-            });
-            return response.data;
-        } catch (error) {
-            console.error('TMDB API Error:', error);
-            throw error;
-        }
+        console.warn('tmdbApi is deprecated. Use tmdbApiClient instead.');
+        return tmdbApiClient.getTVShowDetails(tvId);
     },
 
     // Get movie/TV credits
     getCredits: async (mediaType: 'movie' | 'tv', id: string | number) => {
-        try {
-            const response = await api.get<TMDBCredits>(`/${mediaType}/${id}/credits`, {
-                params: {
-                    language: 'en-US'
-                }
-            });
-            return response.data;
-        } catch (error) {
-            console.error('TMDB API Error:', error);
-            throw error;
-        }
+        console.warn('tmdbApi is deprecated. Use tmdbApiClient instead.');
+        return tmdbApiClient.getCredits(mediaType, id);
     }
 };

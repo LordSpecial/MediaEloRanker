@@ -1,96 +1,96 @@
-import { useState, useEffect } from 'react';
-import { tmdbApi } from '../../services/api/tmdb/tmdbApi';
-import type { TMDBMovie, TMDBResponse } from '../../services/api/tmdb/types';
+import { tmdbApiClient } from '../../services/api/tmdb';
+import { useState, useEffect, useCallback } from 'react';
+import { TMDBMovie, TMDBResponse, TMDBMediaItem } from '../../services/api/tmdb';
+import { ApiError } from '../../services/api/errors';
+import { isMovie } from '../../services/utils/mediaUtils';
 
-type MovieCategory = 'popular' | 'top_rated' | 'trending' | 'random';
+export type MovieCategory = 'popular' | 'top_rated' | 'upcoming' | 'now_playing' | 'trending' | 'random';
 
-interface UseMoviesOptions {
-    page?: number;
-    timeWindow?: 'day' | 'week';
-}
-
-export const useMovies = (category: MovieCategory, options: UseMoviesOptions = {}) => {
+export const useMovies = (category: MovieCategory = 'popular', initialPage: number = 1) => {
     const [movies, setMovies] = useState<TMDBMovie[]>([]);
+    const [page, setPage] = useState(initialPage);
+    const [totalPages, setTotalPages] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [hasMore, setHasMore] = useState(false);
-    const [totalPages, setTotalPages] = useState(0);
-    const [currentPage, setCurrentPage] = useState(options.page || 1);
 
-
-    const fetchMovies = async (pageNum: number, cat: MovieCategory = category) => {
+    const fetchMovies = useCallback(async (currentPage = page, replace = true) => {
         try {
             setLoading(true);
             setError(null);
-
-            let response: TMDBResponse<TMDBMovie>;
-
-            switch(cat) {
-                case 'trending':
-                    response = await tmdbApi.getTrending('movie', options.timeWindow || 'week', pageNum);
-                    break;
-                case 'random':
-                    const randomPage = Math.floor(Math.random() * 20) + 1;
-                    response = await tmdbApi.getMovies('popular', { page: randomPage });
-                    response.results = response.results
-                        .sort(() => Math.random() - 0.5)
-                        .slice(0, 20);
-                    break;
-                default:
-                    response = await tmdbApi.getMovies(cat, { page: pageNum });
-            }
-
-            // Filter to ensure we only have movies
-            const movieResults = response.results.filter((item): item is TMDBMovie =>
-                'title' in item && 'release_date' in item
-            );
-
-            if (pageNum === 1 || cat === 'random') {
-                setMovies(movieResults);
+            
+            let result: TMDBResponse<TMDBMovie | TMDBMediaItem>;
+            
+            if (category === 'trending') {
+                result = await tmdbApiClient.getTrending('movie', 'week', currentPage);
+            } else if (category === 'random') {
+                // For random, we'll fetch popular movies and then shuffle them
+                result = await tmdbApiClient.getMovies('popular', { page: Math.floor(Math.random() * 5) + 1 });
             } else {
-                setMovies(prev => [...prev, ...movieResults]);
+                result = await tmdbApiClient.getMovies(category, { page: currentPage });
             }
-
-            setTotalPages(response.total_pages);
-            setHasMore(pageNum < response.total_pages && cat !== 'random');
+            
+            const filteredResults = result.results.filter(isMovie);
+            
+            setMovies(prev => replace ? filteredResults : [...prev, ...filteredResults]);
+            setTotalPages(result.total_pages);
+            setPage(currentPage);
         } catch (err) {
             console.error('Error fetching movies:', err);
-            setError(err instanceof Error ? err.message : 'Failed to fetch movies');
+            const errorMessage = err instanceof ApiError 
+                ? err.message 
+                : 'Failed to load movies';
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }
-    };
+    }, [category, page]);
 
-    // Handle initial load and category changes
+    // Initial fetch
     useEffect(() => {
-        if (category !== 'random') { // Don't automatically fetch random movies
-            setCurrentPage(1);
-            setMovies([]);
-            fetchMovies(1);
-        }
-    }, [category, options.timeWindow]);
+        fetchMovies(initialPage, true);
+    }, [category, initialPage, fetchMovies]);
 
-    const loadMore = async () => {
-        if (!loading && hasMore) {
-            const nextPage = currentPage + 1;
-            setCurrentPage(nextPage);
-            await fetchMovies(nextPage);
+    // Additional methods needed by MovieExplorePage
+    const loadMore = useCallback(() => {
+        if (page < totalPages && !loading) {
+            fetchMovies(page + 1, false);
         }
-    };
+    }, [fetchMovies, page, totalPages, loading]);
 
-    const getRandomMovies = async () => {
-        setMovies([]); // Clear current movies
-        await fetchMovies(1, 'random');
-    };
+    const getRandomMovies = useCallback(async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            
+            // Get a random page between 1 and 20
+            const randomPage = Math.floor(Math.random() * 20) + 1;
+            const result = await tmdbApiClient.getMovies('popular', { page: randomPage });
+            
+            // Shuffle the results
+            const shuffledResults = [...result.results]
+                .sort(() => Math.random() - 0.5)
+                .filter(isMovie);
+            
+            setMovies(shuffledResults);
+            setTotalPages(result.total_pages);
+            setPage(randomPage);
+        } catch (err) {
+            console.error('Error fetching random movies:', err);
+            const errorMessage = err instanceof ApiError 
+                ? err.message 
+                : 'Failed to load random movies';
+            setError(errorMessage);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     return {
         movies,
         loading,
         error,
-        hasMore,
+        hasMore: page < totalPages,
         loadMore,
-        currentPage,
-        totalPages,
         getRandomMovies
     };
 };
