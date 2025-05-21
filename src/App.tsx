@@ -3,16 +3,12 @@ import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-d
 import Register from './components/auth/Register';
 import Login from './components/auth/Login';
 import { MediaExplorePage } from './components/media/MediaExplorePage';
-import { ProfilePage } from './components/pages/Pages';
-import { HomePage } from './components/pages/Pages';
-import { DiscoverPage } from './components/pages/Pages';
-import { RankPage } from './components/pages/Pages';
-import { LibraryPage } from './components/pages/LibraryPage';
+import { HomePage, ProfilePage, DiscoverPage, RankPage, LibraryPage } from './components/pages';
 import Navbar from './components/ui/Navbar';
 import { useAuth } from './hooks/useAuth';
-import {MovieExplorePage} from "./components/media/MovieExplorePage.tsx";
-import {Toaster} from "./components/ui/toaster.tsx";
-import {TVExplorePage} from "./components/media/TVExplorePage.tsx";
+import { MovieExplorePage } from "./components/media/MovieExplorePage.tsx";
+import { Toaster } from "./components/ui/toaster.tsx";
+import { TVExplorePage } from "./components/media/TVExplorePage.tsx";
 
 // Simple loading component
 const Loading = () => <div>Loading...</div>;
