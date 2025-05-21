@@ -1,21 +1,43 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Card, CardContent } from '../ui/card';
-import { Search, Compass, Shuffle, TrendingUp, Star } from 'lucide-react';
+import { Compass, Shuffle, TrendingUp, Star } from 'lucide-react';
 import { generateMockMediaItems } from './MediaComponents';
-import { EnhancedMediaCard } from './EnhancedMediaCard';
+import { 
+    MediaGrid, 
+    SearchInput, 
+    CategoryTabs 
+} from '@/components/ui/media';
+import { MediaCardProps } from '@/components/ui/media/MediaCard';
 
 export const MediaExplorePage: React.FC = () => {
     const { mediaType } = useParams<{ mediaType: string }>();
     const navigate = useNavigate();
-
+    const [query, setQuery] = useState('');
+    const [activeTab, setActiveTab] = useState('trending');
+    
     const mockItems = generateMockMediaItems(20);
+    const filteredItems = query
+        ? mockItems.filter(item => 
+            item.title.toLowerCase().includes(query.toLowerCase()))
+        : mockItems;
 
     const mediaTypeLabels: Record<string, string> = {
         movies: 'Movies',
         tv: 'TV Shows',
         anime: 'Anime',
         music: 'Albums'
+    };
+
+    const mediaTabs = [
+        { icon: TrendingUp, label: 'Trending', value: 'trending' },
+        { icon: Star, label: 'Top Rated', value: 'top_rated' },
+        { icon: Shuffle, label: 'Random', value: 'random' },
+        { icon: Compass, label: 'Explore All', value: 'explore' }
+    ];
+
+    const handleCardClick = (item: MediaCardProps) => {
+        // Handle card click logic
+        console.log('Clicked on:', item.title);
     };
 
     return (
@@ -34,40 +56,26 @@ export const MediaExplorePage: React.FC = () => {
                 </div>
 
                 {/* Search Bar */}
-                <div className="relative mb-8">
-                    <input
-                        type="text"
-                        placeholder={`Search ${mediaTypeLabels[mediaType || 'movies']}...`}
-                        className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white pl-12"
-                    />
-                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                </div>
+                <SearchInput
+                    value={query}
+                    onChange={setQuery}
+                    placeholder={`Search ${mediaTypeLabels[mediaType || 'movies']}...`}
+                    className="mb-8"
+                />
 
                 {/* Category Tabs */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                    {[
-                        { icon: TrendingUp, label: 'Trending' },
-                        { icon: Star, label: 'Top Rated' },
-                        { icon: Shuffle, label: 'Random' },
-                        { icon: Compass, label: 'Explore All' }
-                    ].map(({ icon: Icon, label }) => (
-                        <Card key={label} className="bg-gray-800 hover:bg-gray-700 cursor-pointer transition-colors">
-                            <CardContent className="flex items-center justify-center p-6">
-                                <Icon className="mr-2 h-5 w-5 text-blue-400" />
-                                <span className="text-white">{label}</span>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
+                <CategoryTabs
+                    tabs={mediaTabs}
+                    activeTab={activeTab}
+                    onTabChange={setActiveTab}
+                />
 
                 {/* Media Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                    {mockItems.map((item, index) => (
-                        <div key={index} className="aspect-[2/3]">
-                            <EnhancedMediaCard {...item} />
-                        </div>
-                    ))}
-                </div>
+                <MediaGrid
+                    items={filteredItems}
+                    onItemClick={handleCardClick}
+                    emptyMessage={`No ${mediaTypeLabels[mediaType || 'movies'].toLowerCase()} found`}
+                />
             </div>
         </div>
     );
