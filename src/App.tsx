@@ -12,15 +12,16 @@ import { Toaster } from "./components/ui/toaster.tsx";
 import { TVExplorePage } from "./components/media/TVExplorePage.tsx";
 import { LibraryProvider } from './contexts/LibraryContext';
 import { AuthProvider } from './contexts/AuthContext';
-
-// Simple loading component
-const Loading = () => <div>Loading...</div>;
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
+import { LoadingSpinner } from './components/ui/LoadingSpinner';
 
 // Protected route wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     const { user, loading } = useAuth();
 
-    if (loading) return <Loading />;
+    if (loading) {
+        return <LoadingSpinner fullPage text="Loading authentication..." />;
+    }
 
     if (!user || !user.emailVerified) {
         return <Navigate to="/login" />;
@@ -38,7 +39,7 @@ const AppRoutes = () => {
     const { user, loading } = useAuth();
 
     if (loading) {
-        return <Loading />;
+        return <LoadingSpinner fullPage text="Loading authentication..." />;
     }
 
     const shouldRedirectToProfile = user && user.emailVerified;
@@ -152,16 +153,18 @@ const AppRoutes = () => {
 
 const App = () => {
     return (
-        <AuthProvider>
-            <Router>
-                <LibraryProvider>
-                    <div className="dark-theme">
-                        <AppRoutes />
-                        <Toaster />
-                    </div>
-                </LibraryProvider>
-            </Router>
-        </AuthProvider>
+        <ErrorBoundary>
+            <AuthProvider>
+                <Router>
+                    <LibraryProvider>
+                        <div className="dark-theme">
+                            <AppRoutes />
+                            <Toaster />
+                        </div>
+                    </LibraryProvider>
+                </Router>
+            </AuthProvider>
+        </ErrorBoundary>
     );
 };
 
