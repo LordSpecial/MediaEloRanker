@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { tmdbApiClient } from '../../services/api/tmdb';
+import { tmdbApiClient } from '../../services/api/tmdb/tmdbApiClient';
 import { TMDBMovie, TMDBTVShow, TMDBCredits } from '@/types/api/tmdb';
 import { ApiError } from '../../services/api/errors';
 

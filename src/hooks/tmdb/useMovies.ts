@@ -1,6 +1,7 @@
-import { tmdbApiClient } from '../../services/api/tmdb';
+import { tmdbApiClient } from '../../services/api/tmdb/tmdbApiClient';
 import { useState, useEffect, useCallback } from 'react';
-import { TMDBMovie, TMDBResponse, TMDBMediaItem } from '../../services/api/tmdb';
+import { TMDBMovie, TMDBMediaItem } from '@/types/api/tmdb';
+import { TMDBResponse } from '@/types/api';
 import { ApiError } from '../../services/api/errors';
 import { isMovie } from '../../services/utils/mediaUtils';
 

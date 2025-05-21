@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from '../useAuth';
 import { libraryService } from '../../services/firebase/libraryService';
-import { tmdbApiClient } from '../../services/api/tmdb';
+import { tmdbApiClient } from '../../services/api/tmdb/tmdbApiClient';
 import { toast } from '@/components/ui/use-toast';
 import { convertTMDBToMetadata } from "../../services/utils/mediaTransforms";
 import { AddToLibraryParams, MediaMetadata, MediaType } from '@/types/media/common';

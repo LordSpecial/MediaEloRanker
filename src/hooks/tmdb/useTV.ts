@@ -1,9 +1,10 @@
-import { tmdbApiClient } from '../../services/api/tmdb';
+import { tmdbApiClient } from '../../services/api/tmdb/tmdbApiClient';
 import { useState, useEffect, useCallback } from 'react';
-import { TMDBTVShow, TMDBResponse, TMDBMediaItem } from '../../services/api/tmdb';
+import { TMDBTVShow, TMDBMediaItem } from '@/types/api/tmdb';
+import { TMDBResponse } from '@/types/api';
 import { ApiError } from '../../services/api/errors';
-import { isTVShow } from "../../services/utils/mediaUtils.ts";
-import { isAnime } from "../../services/utils/mediaTypeGuards.ts";
+import { isTVShow } from "../../services/utils/mediaUtils";
+import { isAnime } from "../../services/utils/mediaTypeGuards";
 
 export type TVCategory = 'popular' | 'top_rated' | 'on_the_air' | 'airing_today' | 'trending' | 'random';
 

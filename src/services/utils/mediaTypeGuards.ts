@@ -1,4 +1,4 @@
-import { TMDBMovie, TMDBTVShow } from '../api/tmdb/types';
+import { TMDBMovie, TMDBTVShow } from '@/types/api/tmdb';
 
 export const isMovie = (media: TMDBMovie | TMDBTVShow): media is TMDBMovie => {
     return 'title' in media && 'release_date' in media;
@@ -12,9 +12,9 @@ export const isTVShow = (media: TMDBMovie | TMDBTVShow): media is TMDBTVShow => 
 export const isAnime = (media: TMDBMovie | TMDBTVShow): boolean => {
     const ANIMATION_GENRE_ID = 16;
     return (
-        media.genre_ids.includes(ANIMATION_GENRE_ID) &&
+        media.genre_ids?.includes(ANIMATION_GENRE_ID) &&
         media.original_language === 'ja'
-    );
+    ) || false;
 };
 
 // Non-anime TV shows

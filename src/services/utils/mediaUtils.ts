@@ -1,5 +1,5 @@
-import { TMDBMovie, TMDBTVShow, TMDBMediaItem } from '../api/tmdb';
-import { tmdbApiClient } from '../api/tmdb';
+import { TMDBMovie, TMDBTVShow, TMDBMediaItem } from '@/types/api/tmdb';
+import { tmdbApiClient } from '../api/tmdb/tmdbApiClient';
 import type { MediaCardProps } from '../../components/media/EnhancedMediaCard';
 import { getImageUrl } from '../config/tmdb.config';
 

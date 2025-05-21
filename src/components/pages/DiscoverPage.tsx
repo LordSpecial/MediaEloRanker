@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
-import { tmdbApiClient, TMDBMovie, TMDBTVShow } from "../../services/api/tmdb";
-import { formatMediaItem } from "../../services/utils/mediaUtils.ts";
+import { tmdbApiClient } from "../../services/api/tmdb/tmdbApiClient";
+import { TMDBMovie, TMDBTVShow } from "@/types/api/tmdb";
+import { formatMediaItem } from "../../services/utils/mediaUtils";
 import { MediaCarousel, generateMockMediaItems } from '../media/MediaComponents';
 import { MediaCardProps } from '../media/EnhancedMediaCard';
 
