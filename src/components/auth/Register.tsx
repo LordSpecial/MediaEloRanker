@@ -1,10 +1,6 @@
 import React, { useState, useEffect } from "react";
-import {
-    createUserWithEmailAndPassword,
-    sendEmailVerification,
-} from "firebase/auth";
-import { auth } from "../../firebase";
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import viteLogo from '/vite.svg';
 import './AuthStyles.css';
 
@@ -14,25 +10,24 @@ const Register: React.FC = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [displayName, setDisplayName] = useState("");
-    const [error, setError] = useState("");
-    const [isLoading, setIsLoading] = useState(false);
     const [registrationStep, setRegistrationStep] = useState<RegistrationStep>('initial');
     const [verificationTimer, setVerificationTimer] = useState(30);
     const navigate = useNavigate();
+    const { register, loading, error, user, resendVerificationEmail } = useAuth();
 
     // Handle the verification check
     useEffect(() => {
         let checkInterval: NodeJS.Timeout;
         let timerInterval: NodeJS.Timeout;
 
-        if (registrationStep === 'verifying') {
+        if (registrationStep === 'verifying' && user) {
             // Check verification status every 3 seconds
             checkInterval = setInterval(async () => {
-                if (auth.currentUser) {
+                if (user) {
                     // Force refresh the token to get current verification status
-                    await auth.currentUser.reload();
+                    await user.reload();
 
-                    if (auth.currentUser.emailVerified) {
+                    if (user.emailVerified) {
                         setRegistrationStep('completed');
                         clearInterval(checkInterval);
 
@@ -54,39 +49,17 @@ const Register: React.FC = () => {
             clearInterval(checkInterval);
             clearInterval(timerInterval);
         };
-    }, [registrationStep, navigate]);
+    }, [registrationStep, navigate, user]);
 
     const handleInitialSignUp = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError('');
-        setIsLoading(true);
-
-        try {
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            await sendEmailVerification(userCredential.user);
-            setRegistrationStep('verifying');
-        } catch (error: any) {
-            setError(
-                error.code === 'auth/email-already-in-use'
-                    ? 'Email is already registered'
-                    : error.code === 'auth/weak-password'
-                        ? 'Password should be at least 6 characters'
-                        : 'An error occurred. Please try again.'
-            );
-        } finally {
-            setIsLoading(false);
-        }
+        await register(email, password, displayName);
+        setRegistrationStep('verifying');
     };
 
     const handleResendVerification = async () => {
-        if (!auth.currentUser) return;
-
-        try {
-            await sendEmailVerification(auth.currentUser);
-            setVerificationTimer(30);
-        } catch (error) {
-            setError('Failed to resend verification email. Please try again.');
-        }
+        await resendVerificationEmail();
+        setVerificationTimer(30);
     };
 
     const renderContent = () => {
@@ -174,9 +147,9 @@ const Register: React.FC = () => {
                             <button
                                 type="submit"
                                 className="auth-button"
-                                disabled={isLoading}
+                                disabled={loading}
                             >
-                                {isLoading ? 'Creating account...' : 'Sign Up'}
+                                {loading ? 'Creating account...' : 'Sign Up'}
                             </button>
                         </form>
 

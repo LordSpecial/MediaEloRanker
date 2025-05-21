@@ -4,14 +4,21 @@ import { useAuth } from '../../contexts/AuthContext';
 import viteLogo from '/vite.svg';
 import './AuthStyles.css';
 
-const Login: React.FC = () => {
+const ForgotPassword: React.FC = () => {
     const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const { login, loading, error } = useAuth();
+    const [message, setMessage] = useState('');
+    const { resetPassword, loading, error } = useAuth();
 
-    const handleLogin = async (e: React.FormEvent) => {
+    const handleResetPassword = async (e: React.FormEvent) => {
         e.preventDefault();
-        await login(email, password);
+        setMessage('');
+        
+        try {
+            await resetPassword(email);
+            setMessage('Check your email for password reset instructions');
+        } catch (err) {
+            // Error is already handled by the hook
+        }
     };
 
     return (
@@ -21,11 +28,12 @@ const Login: React.FC = () => {
                     <img src={viteLogo} alt="Logo" />
                 </div>
 
-                <h2 className="form-title">Welcome Back</h2>
+                <h2 className="form-title">Reset Password</h2>
 
+                {message && <div className="success-message">{message}</div>}
                 {error && <div className="error-message">{error}</div>}
 
-                <form onSubmit={handleLogin}>
+                <form onSubmit={handleResetPassword}>
                     <div className="form-group">
                         <input
                             type="email"
@@ -34,19 +42,6 @@ const Login: React.FC = () => {
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="Email"
                             required
-                            autoComplete="email"
-                        />
-                    </div>
-
-                    <div className="form-group">
-                        <input
-                            type="password"
-                            className="form-control"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="Password"
-                            required
-                            autoComplete="current-password"
                         />
                     </div>
 
@@ -55,16 +50,13 @@ const Login: React.FC = () => {
                         className="auth-button"
                         disabled={loading}
                     >
-                        {loading ? 'Signing in...' : 'Sign In'}
+                        {loading ? 'Sending...' : 'Reset Password'}
                     </button>
                 </form>
 
                 <div className="auth-links">
-                    <Link to="/register" className="auth-link">
-                        Don't have an account? Sign up
-                    </Link>
-                    <Link to="/forgot-password" className="auth-link mt-2">
-                        Forgot password?
+                    <Link to="/login" className="auth-link">
+                        Back to Login
                     </Link>
                 </div>
             </div>
@@ -72,4 +64,4 @@ const Login: React.FC = () => {
     );
 };
 
-export default Login;
+export default ForgotPassword; 
