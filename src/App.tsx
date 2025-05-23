@@ -14,8 +14,6 @@ import { LibraryProvider } from './contexts/LibraryContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
-import EloAdminPage from './features/elo/EloAdminPage';
-import EloComparisonPage from './features/elo/EloComparisonPage';
 
 // Protected route wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -142,14 +140,6 @@ const AppRoutes = () => {
                 }
             />
             <Route
-                path="/rank/compare"
-                element={
-                    <ProtectedRoute>
-                        <EloComparisonPage />
-                    </ProtectedRoute>
-                }
-            />
-            <Route
                 path="/library"
                 element={
                     <ProtectedRoute>
@@ -166,16 +156,6 @@ const AppRoutes = () => {
                 }
             />
             
-            {/* Admin routes */}
-            <Route
-                path="/admin/elo"
-                element={
-                    <AdminRoute>
-                        <EloAdminPage />
-                    </AdminRoute>
-                }
-            />
-
             {/* Default redirect */}
             <Route
                 path="*"

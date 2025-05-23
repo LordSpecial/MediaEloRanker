@@ -26,8 +26,6 @@ const NavDropdownItem = ({ icon: Icon, text, to }: NavDropdownItemProps) => {
 const Navbar = () => {
     const [isDiscoverOpen, setIsDiscoverOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
-    const [isAdminOpen, setIsAdminOpen] = useState(false);
-    const [isRankOpen, setIsRankOpen] = useState(false);
     const { logout, user } = useAuth();
     const navigate = useNavigate();
 
@@ -41,15 +39,6 @@ const Navbar = () => {
         { icon: Tv, text: 'TV Shows', path: '/explore/tv' },
         { icon: PlayCircle, text: 'Anime', path: '/explore/anime' },
         { icon: Music, text: 'Music', path: '/explore/music' },
-    ];
-
-    const adminCategories = [
-        { icon: Award, text: 'ELO System', path: '/admin/elo' },
-    ];
-    
-    const rankCategories = [
-        { icon: Award, text: 'Rankings', path: '/rank' },
-        { icon: Film, text: 'Compare Media', path: '/rank/compare' },
     ];
 
     return (
@@ -111,42 +100,17 @@ const Navbar = () => {
                                 </div>
                             </div>
 
-                            {/* Rank Dropdown */}
-                            <div
-                                className="relative"
-                                onMouseEnter={() => setIsRankOpen(true)}
-                                onMouseLeave={() => setIsRankOpen(false)}
+                            <NavLink
+                                to="/rank"
+                                className={({ isActive }) =>
+                                    `flex items-center space-x-2 text-gray-300 hover:text-white transition-colors ${
+                                        isActive ? 'text-white' : ''
+                                    }`
+                                }
                             >
-                                <NavLink
-                                    to="/rank"
-                                    className={({ isActive }) =>
-                                        `flex items-center space-x-2 text-gray-300 hover:text-white transition-colors ${
-                                            isActive ? 'text-white' : ''
-                                        }`
-                                    }
-                                >
-                                    <Award size={20} />
-                                    <span>Rank</span>
-                                </NavLink>
-
-                                {/* Dropdown Menu */}
-                                <div
-                                    className={`absolute left-0 w-48 mt-2 py-2 bg-gray-800 rounded-md shadow-lg transition-all duration-200 ${
-                                        isRankOpen
-                                            ? 'opacity-100 translate-y-0 visible'
-                                            : 'opacity-0 -translate-y-2 invisible'
-                                    }`}
-                                >
-                                    {rankCategories.map((category, index) => (
-                                        <NavDropdownItem
-                                            key={index}
-                                            icon={category.icon}
-                                            text={category.text}
-                                            to={category.path}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
+                                <Award size={20} />
+                                <span>Compare</span>
+                            </NavLink>
 
                             <NavLink
                                 to="/library"
@@ -159,38 +123,6 @@ const Navbar = () => {
                                 <Library size={20} />
                                 <span>Library</span>
                             </NavLink>
-
-                            {/* Admin Menu */}
-                            <div
-                                className="relative"
-                                onMouseEnter={() => setIsAdminOpen(true)}
-                                onMouseLeave={() => setIsAdminOpen(false)}
-                            >
-                                <button
-                                    className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors"
-                                >
-                                    <Shield size={20} />
-                                    <span>Admin</span>
-                                </button>
-
-                                {/* Admin Dropdown */}
-                                <div
-                                    className={`absolute left-0 w-48 mt-2 py-2 bg-gray-800 rounded-md shadow-lg transition-all duration-200 ${
-                                        isAdminOpen
-                                            ? 'opacity-100 translate-y-0 visible'
-                                            : 'opacity-0 -translate-y-2 invisible'
-                                    }`}
-                                >
-                                    {adminCategories.map((category, index) => (
-                                        <NavDropdownItem
-                                            key={index}
-                                            icon={category.icon}
-                                            text={category.text}
-                                            to={category.path}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
 
                             {/* Profile Menu */}
                             <div
