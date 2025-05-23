@@ -71,6 +71,7 @@ const EloComparison: React.FC<EloComparisonProps> = ({
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedMethod, setSelectedMethod] = useState<string>('default');
   const [anchorItem, setAnchorItem] = useState<ComparisonItem | null>(null);
+  const [showEloChange, setShowEloChange] = useState<boolean>(true);
 
   // Fetch ELO metadata once
   useEffect(() => {
@@ -166,20 +167,33 @@ const EloComparison: React.FC<EloComparisonProps> = ({
     });
     updateResult.winner.id = winnerId;
     updateResult.loser.id = loserId;
-    setRatingOverlays({
-      winnerId: updateResult.winner.id,
-      loserId: updateResult.loser.id,
-      winnerChange: updateResult.winner.ratingChange,
-      loserChange: updateResult.loser.ratingChange,
-      winnerNewRating: updateResult.winner.newRating,
-      loserNewRating: updateResult.loser.newRating
-    });
-    setResult(updateResult);
-    if (onComparisonComplete) onComparisonComplete(updateResult);
-    // Optimistically swap in preloaded pair after overlay
-    setTimeout(() => {
-      setRatingOverlays(null);
-      setResult(null);
+    if (showEloChange) {
+      setRatingOverlays({
+        winnerId: updateResult.winner.id,
+        loserId: updateResult.loser.id,
+        winnerChange: updateResult.winner.ratingChange,
+        loserChange: updateResult.loser.ratingChange,
+        winnerNewRating: updateResult.winner.newRating,
+        loserNewRating: updateResult.loser.newRating
+      });
+      setResult(updateResult);
+      if (onComparisonComplete) onComparisonComplete(updateResult);
+      setTimeout(() => {
+        setRatingOverlays(null);
+        setResult(null);
+        if (nextPair && nextPair.length >= 2) {
+          setItems(nextPair);
+          setMediaDetails(nextMediaDetails);
+          setNextPair(null);
+          setNextMediaDetails({});
+          preloadNextPair();
+        } else {
+          loadPair();
+        }
+      }, 1250);
+    } else {
+      // Skip overlay, go straight to next pair
+      if (onComparisonComplete) onComparisonComplete(updateResult);
       if (nextPair && nextPair.length >= 2) {
         setItems(nextPair);
         setMediaDetails(nextMediaDetails);
@@ -189,7 +203,7 @@ const EloComparison: React.FC<EloComparisonProps> = ({
       } else {
         loadPair();
       }
-    }, 1250);
+    }
     // Send backend update in background
     eloService.updateRatings(user.uid, winnerId, loserId, false)
       .catch(err => {
@@ -245,30 +259,29 @@ const EloComparison: React.FC<EloComparisonProps> = ({
       const updateResult = await eloService.updateRatings(user.uid, id1, id2, true); // true indicates a draw
       console.log('Draw update successful, result:', updateResult);
       
-      // Show rating changes as overlays instead of full result screen
-      setRatingOverlays({
-        winnerId: updateResult.winner.id,
-        loserId: updateResult.loser.id,
-        winnerChange: updateResult.winner.ratingChange,
-        loserChange: updateResult.loser.ratingChange,
-        winnerNewRating: updateResult.winner.newRating,
-        loserNewRating: updateResult.loser.newRating
-      });
-      
-      // Store result for callback
-      setResult(updateResult);
-      
-      if (onComparisonComplete) {
-        console.log('Calling onComparisonComplete callback with result');
-        onComparisonComplete(updateResult);
-      }
-      
-      // Set timeout to load next pair after overlay display
-      setTimeout(() => {
-        console.log('Overlay display time complete, loading next pair');
-        setRatingOverlays(null);
+      if (showEloChange) {
+        setRatingOverlays({
+          winnerId: updateResult.winner.id,
+          loserId: updateResult.loser.id,
+          winnerChange: updateResult.winner.ratingChange,
+          loserChange: updateResult.loser.ratingChange,
+          winnerNewRating: updateResult.winner.newRating,
+          loserNewRating: updateResult.loser.newRating
+        });
+        setResult(updateResult);
+        if (onComparisonComplete) {
+          console.log('Calling onComparisonComplete callback with result');
+          onComparisonComplete(updateResult);
+        }
+        setTimeout(() => {
+          console.log('Overlay display time complete, loading next pair');
+          setRatingOverlays(null);
+          loadPair();
+        }, 500);
+      } else {
+        if (onComparisonComplete) onComparisonComplete(updateResult);
         loadPair();
-      }, 500); // 2 seconds
+      }
     } catch (err: any) {
       console.error('Error updating ratings for draw:', err);
       console.error('Error details:', {
@@ -360,6 +373,24 @@ const EloComparison: React.FC<EloComparisonProps> = ({
               </div>
             </div>
           )}
+          {/* Show ELO change toggle switch */}
+          <div className="mt-4 flex items-center gap-3">
+            <span className="text-gray-300">Show ELO Change Overlay</span>
+            <button
+              type="button"
+              onClick={() => setShowEloChange(v => !v)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                showEloChange ? 'bg-blue-600' : 'bg-gray-600'
+              }`}
+              aria-pressed={showEloChange}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  showEloChange ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
         </div>
         <div className="p-6 bg-gradient-to-br from-gray-800 via-gray-900 to-gray-800 rounded-lg shadow-lg border border-gray-700 text-gray-200">
           <h2 className="text-xl font-bold mb-6 text-center">Which do you prefer?</h2>
