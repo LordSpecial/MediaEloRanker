@@ -34,6 +34,18 @@ interface EloComparisonProps {
   onComparisonComplete?: (result: any) => void;
 }
 
+const mediaTypes = [
+  { id: 'all', label: 'All' },
+  { id: 'film', label: 'Movies' },
+  { id: 'tv', label: 'TV Shows' },
+  { id: 'anime', label: 'Anime' },
+  { id: 'music', label: 'Music' },
+];
+const compareMethods = [
+  { id: 'default', label: 'Default' },
+  { id: 'compareSingle', label: 'Compare to Single' },
+];
+
 const EloComparison: React.FC<EloComparisonProps> = ({ 
   mediaType = null, 
   onComparisonComplete 
@@ -56,6 +68,9 @@ const EloComparison: React.FC<EloComparisonProps> = ({
   const [nextPair, setNextPair] = useState<ComparisonItem[] | null>(null);
   const [nextMediaDetails, setNextMediaDetails] = useState<Record<string, any>>({});
   const [eloMetadata, setEloMetadata] = useState<EloMetadata | null>(null);
+  const [selectedType, setSelectedType] = useState<string>('all');
+  const [selectedMethod, setSelectedMethod] = useState<string>('default');
+  const [anchorItem, setAnchorItem] = useState<ComparisonItem | null>(null);
 
   // Fetch ELO metadata once
   useEffect(() => {
@@ -67,15 +82,23 @@ const EloComparison: React.FC<EloComparisonProps> = ({
   // Initial load and preload
   useEffect(() => {
     if (user) {
+      setLoading(true);
+      setItems([]);
+      setMediaDetails({});
+      setError(null);
+      setNextPair(null);
+      setNextMediaDetails({});
       loadPair();
     }
-  }, [user, mediaType]);
+    // eslint-disable-next-line
+  }, [user, selectedType, selectedMethod, anchorItem]);
 
   // Preload the next pair
   const preloadNextPair = async () => {
     if (!user) return;
     try {
-      const pair = await eloService.selectPairForComparison(user.uid, mediaType) as ComparisonItem[];
+      const typeArg = selectedType === 'all' ? null : selectedType;
+      const pair = await eloService.selectPairForComparison(user.uid, typeArg) as ComparisonItem[];
       if (pair && pair.length >= 2) {
         const mediaIds = pair.map(item => item.mediaId).filter(Boolean);
         const details = await fetchMediaDetails(mediaIds);
@@ -96,17 +119,9 @@ const EloComparison: React.FC<EloComparisonProps> = ({
     if (!user) return;
     setLoading(true);
     setError(null);
-    if (nextPair && nextPair.length >= 2) {
-      setItems(nextPair);
-      setMediaDetails(nextMediaDetails);
-      setNextPair(null);
-      setNextMediaDetails({});
-      preloadNextPair();
-      setLoading(false);
-      return;
-    }
     try {
-      const pair = await eloService.selectPairForComparison(user.uid, mediaType) as ComparisonItem[];
+      const typeArg = selectedType === 'all' ? null : selectedType;
+      const pair = await eloService.selectPairForComparison(user.uid, typeArg) as ComparisonItem[];
       if (pair && pair.length > 0) {
         const missingProps = pair.filter(item => {
           return !('mediaId' in item) || !('type' in item);
@@ -119,8 +134,8 @@ const EloComparison: React.FC<EloComparisonProps> = ({
         setMediaDetails(details);
       }
       if (!pair || pair.length < 2) {
-        // fallback logic unchanged
-        // ... existing code ...
+        setError('Not enough items available for comparison. Please add more media to your library or change your filter.');
+        setItems([]);
       } else {
         setItems(pair);
         preloadNextPair();
@@ -293,122 +308,152 @@ const EloComparison: React.FC<EloComparisonProps> = ({
     );
   }
 
-  if (error) {
-    console.log('Rendering error state:', error);
-    return (
-      <div className="bg-red-100 text-red-800 p-4 rounded-md mb-4">
-        <p className="font-semibold">Error</p>
-        <p>{error}</p>
-        <button 
-          onClick={loadPair}
-          className="mt-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded"
-        >
-          Try Again
-        </button>
-      </div>
-    );
-  }
-
-  if (items.length < 2) {
-    console.log('Rendering "not enough items" state');
-    return (
-      <div className="text-center p-8 bg-gray-100 rounded-md">
-        <p className="text-gray-600 mb-4">
-          Not enough items available for comparison. Please add more media to your library.
-        </p>
-        <button 
-          onClick={loadPair}
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-        >
-          Refresh
-        </button>
-      </div>
-    );
-  }
-  
   console.log('Rendering comparison state with items:', items);
   return (
-    <div className="p-6 bg-white rounded-lg shadow-md">
-      <h2 className="text-xl font-bold mb-6 text-center">Which do you prefer?</h2>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {items.map((item, index) => {
-          const mediaDetail = mediaDetails[item.mediaId] || {};
-          const isItemWinner = ratingOverlays && ratingOverlays.winnerId === item.id;
-          const isItemLoser = ratingOverlays && ratingOverlays.loserId === item.id;
-          const showOverlay = isItemWinner || isItemLoser;
-          const ratingChange = isItemWinner ? ratingOverlays?.winnerChange : ratingOverlays?.loserChange;
-          const newRating = isItemWinner ? ratingOverlays?.winnerNewRating : ratingOverlays?.loserNewRating;
-          
-          return (
-            <div key={item.id} className="flex flex-col items-center">
-              <div className="relative w-full pb-[140%] mb-4">
-                {mediaDetail.imageUrl ? (
-                  <>
-                    <img
-                      src={mediaDetail.imageUrl}
-                      alt={mediaDetail.title || 'Media item'}
-                      className="absolute inset-0 w-full h-full object-cover rounded-md shadow-md"
-                    />
-                    {/* Rating change overlay */}
-                    {showOverlay && (
-                      <div className="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center text-white rounded-md">
-                        <p className="text-2xl font-bold mb-2">{newRating?.toFixed(0)}</p>
-                        <p className={`text-xl font-bold ${ratingChange && ratingChange >= 0 ? "text-green-400" : "text-red-400"}`}>
-                          {ratingChange && ratingChange > 0 ? "+" : ""}{ratingChange?.toFixed(0)}
-                        </p>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="absolute inset-0 w-full h-full bg-gray-200 flex items-center justify-center rounded-md shadow-md">
-                    <span className="text-gray-500">No Image</span>
-                    {/* Rating change overlay for items without images */}
-                    {showOverlay && (
-                      <div className="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center text-white rounded-md">
-                        <p className="text-2xl font-bold mb-2">{newRating?.toFixed(0)}</p>
-                        <p className={`text-xl font-bold ${ratingChange && ratingChange >= 0 ? "text-green-400" : "text-red-400"}`}>
-                          {ratingChange && ratingChange > 0 ? "+" : ""}{ratingChange?.toFixed(0)}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
+    <div className="min-h-screen bg-gray-900 pt-20 px-4">
+      <div className="max-w-3xl mx-auto">
+        {/* Filter Bar */}
+        <div className="mb-6">
+          <div className="flex flex-col md:flex-row md:items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-gray-300">Type:</span>
+              <div className="flex flex-wrap gap-2">
+                {mediaTypes.map((type) => (
+                  <button
+                    key={type.id}
+                    onClick={() => setSelectedType(type.id)}
+                    className={`px-4 py-2 rounded-full text-sm transition-colors ${
+                      selectedType === type.id
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    }`}
+                  >
+                    {type.label}
+                  </button>
+                ))}
               </div>
-              
-              <h3 className="text-lg font-semibold mb-1">{mediaDetail.title || `Item ${item.mediaId}`}</h3>
-              <p className="text-sm text-gray-500 mb-4">{mediaDetail.releaseYear || item.type}</p>
-              
-              <div className="text-sm text-gray-500 mb-3 text-center">
-                <p>Current Rating: {item.globalEloScore?.toFixed(0) || 1500}</p>
-                <p>Comparisons: {item.globalEloMatches || 0}</p>
-              </div>
-              
-              <button
-                onClick={() => {
-                  console.log(`Selection button clicked for item ${index}:`, item.id);
-                  handleSelection(item.id, items[1-index].id);
-                }}
-                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-2 w-full"
-                disabled={ratingOverlays !== null}
-              >
-                Prefer This
-              </button>
             </div>
-          );
-        })}
-      </div>
-
-      <div className="mt-6 text-center">
-        <button
-          onClick={() => {
-            console.log('Draw button clicked');
-            handleDrawSelection(items[0].id, items[1].id);
-          }}
-          className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
-        >
-          Equal / Can't Decide
-        </button>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-300">Method:</span>
+              <div className="flex flex-wrap gap-2">
+                {compareMethods.map((method) => (
+                  <button
+                    key={method.id}
+                    onClick={() => setSelectedMethod(method.id)}
+                    className={`px-4 py-2 rounded-full text-sm transition-colors ${
+                      selectedMethod === method.id
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    }`}
+                  >
+                    {method.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          {/* Anchor picker placeholder */}
+          {selectedMethod === 'compareSingle' && (
+            <div className="mt-4">
+              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                <span className="text-gray-300">Anchor selection coming soon...</span>
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="p-6 bg-white rounded-lg shadow-md">
+          <h2 className="text-xl font-bold mb-6 text-center">Which do you prefer?</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 min-h-[200px]">
+            {(error || items.length < 2) ? (
+              <div className="col-span-2 flex flex-col items-center justify-center py-8">
+                <p className="text-red-600 font-semibold mb-4">
+                  {error || 'Not enough items available for comparison. Please add more media to your library.'}
+                </p>
+                <button
+                  onClick={loadPair}
+                  className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                >
+                  Refresh
+                </button>
+              </div>
+            ) : (
+              items.map((item, index) => {
+                const mediaDetail = mediaDetails[item.mediaId] || {};
+                const isItemWinner = ratingOverlays && ratingOverlays.winnerId === item.id;
+                const isItemLoser = ratingOverlays && ratingOverlays.loserId === item.id;
+                const showOverlay = isItemWinner || isItemLoser;
+                const ratingChange = isItemWinner ? ratingOverlays?.winnerChange : ratingOverlays?.loserChange;
+                const newRating = isItemWinner ? ratingOverlays?.winnerNewRating : ratingOverlays?.loserNewRating;
+                return (
+                  <div key={item.id} className="flex flex-col items-center">
+                    <div className="relative w-full pb-[140%] mb-4">
+                      {mediaDetail.imageUrl ? (
+                        <>
+                          <img
+                            src={mediaDetail.imageUrl}
+                            alt={mediaDetail.title || 'Media item'}
+                            className="absolute inset-0 w-full h-full object-cover rounded-md shadow-md"
+                          />
+                          {/* Rating change overlay */}
+                          {showOverlay && (
+                            <div className="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center text-white rounded-md">
+                              <p className="text-2xl font-bold mb-2">{newRating?.toFixed(0)}</p>
+                              <p className={`text-xl font-bold ${ratingChange && ratingChange >= 0 ? "text-green-400" : "text-red-400"}`}>
+                                {ratingChange && ratingChange > 0 ? "+" : ""}{ratingChange?.toFixed(0)}
+                              </p>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="absolute inset-0 w-full h-full bg-gray-200 flex items-center justify-center rounded-md shadow-md">
+                          <span className="text-gray-500">No Image</span>
+                          {/* Rating change overlay for items without images */}
+                          {showOverlay && (
+                            <div className="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center text-white rounded-md">
+                              <p className="text-2xl font-bold mb-2">{newRating?.toFixed(0)}</p>
+                              <p className={`text-xl font-bold ${ratingChange && ratingChange >= 0 ? "text-green-400" : "text-red-400"}`}>
+                                {ratingChange && ratingChange > 0 ? "+" : ""}{ratingChange?.toFixed(0)}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <h3 className="text-lg font-semibold mb-1">{mediaDetail.title || `Item ${item.mediaId}`}</h3>
+                    <p className="text-sm text-gray-500 mb-4">{mediaDetail.releaseYear || item.type}</p>
+                    <div className="text-sm text-gray-500 mb-3 text-center">
+                      <p>Current Rating: {item.globalEloScore?.toFixed(0) || 1500}</p>
+                      <p>Comparisons: {item.globalEloMatches || 0}</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        console.log(`Selection button clicked for item ${index}:`, item.id);
+                        handleSelection(item.id, items[1-index].id);
+                      }}
+                      className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-2 w-full"
+                      disabled={ratingOverlays !== null}
+                    >
+                      Prefer This
+                    </button>
+                  </div>
+                );
+              })
+            )}
+          </div>
+          <div className="mt-6 text-center">
+            <button
+              onClick={() => {
+                if (items.length < 2) return;
+                console.log('Draw button clicked');
+                handleDrawSelection(items[0].id, items[1].id);
+              }}
+              className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
+              disabled={!!error}
+            >
+              Equal / Can't Decide
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
