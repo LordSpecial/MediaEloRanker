@@ -14,6 +14,7 @@ import { LibraryProvider } from './contexts/LibraryContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
+import EloAdminPage from './features/elo/EloAdminPage';
 
 // Protected route wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -23,6 +24,28 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
         return <LoadingSpinner fullPage text="Loading authentication..." />;
     }
 
+    if (!user || !user.emailVerified) {
+        return <Navigate to="/login" />;
+    }
+
+    return (
+        <>
+            <Navbar />
+            {children}
+        </>
+    );
+};
+
+// Admin route wrapper - requires some additional check for admin privileges
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+    const { user, loading } = useAuth();
+
+    if (loading) {
+        return <LoadingSpinner fullPage text="Loading authentication..." />;
+    }
+
+    // For now, we just check if the user is authenticated
+    // In the future, you can add more checks for admin status
     if (!user || !user.emailVerified) {
         return <Navigate to="/login" />;
     }
@@ -131,6 +154,16 @@ const AppRoutes = () => {
                     <ProtectedRoute>
                         <ProfilePage />
                     </ProtectedRoute>
+                }
+            />
+            
+            {/* Admin routes */}
+            <Route
+                path="/admin/elo"
+                element={
+                    <AdminRoute>
+                        <EloAdminPage />
+                    </AdminRoute>
                 }
             />
 
