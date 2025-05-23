@@ -1,84 +1,86 @@
 import { useState, useEffect, useCallback } from 'react';
-import { tmdbApi } from '../../services/api/tmdb/tmdbApi';
-import type {TMDBMovie, TMDBResponse, TMDBTVShow} from '../../services/api/tmdb/types';
+import { tmdbApiClient } from '../../services/api/tmdb/tmdbApiClient';
+import { TMDBMovie, TMDBTVShow, TMDBMediaItem } from '@/types/api/tmdb';
+import { TMDBResponse } from '@/types/api';
+import { ApiError } from '../../services/api/errors';
+import { isMovie, isTVShow } from '../../services/utils/mediaUtils';
 
 interface UseSearchOptions {
-    initialQuery?: string;
     autoSearch?: boolean;
+    mediaType?: 'movie' | 'tv' | 'all';
     debounceMs?: number;
-    mediaType?: 'movie' | 'tv';
 }
 
-export const useSearch = ({
-                              initialQuery = '',
-                              autoSearch = true,
-                              debounceMs = 300,
-                              mediaType = 'movie'
-                          }: UseSearchOptions = {}) => {
-    const [query, setQuery] = useState(initialQuery);
-    const [results, setResults] = useState<TMDBMovie[] | TMDBTVShow[]>([]);
+export const useSearch = (options: UseSearchOptions = {}) => {
+    const { 
+        autoSearch = false, 
+        mediaType = 'all', 
+        debounceMs = 500 
+    } = options;
+    
+    const [query, setQuery] = useState('');
+    const [results, setResults] = useState<(TMDBMovie | TMDBTVShow)[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-
-    const debouncedSearch = useCallback(
-        (() => {
-            let timeoutId: NodeJS.Timeout;
-
-            return async (searchQuery: string) => {
-                clearTimeout(timeoutId);
-
-                return new Promise<void>((resolve) => {
-                    timeoutId = setTimeout(async () => {
-                        if (!searchQuery.trim()) {
-                            setResults([]);
-                            resolve();
-                            return;
-                        }
-
-                        try {
-                            setLoading(true);
-                            setError(null);
-
-                            const response = mediaType === 'tv'
-                                ? await tmdbApi.searchTVShows(searchQuery)
-                                : await tmdbApi.searchMovies(searchQuery);
-
-                            setResults(response.results);
-                        } catch (err) {
-                            setError(err instanceof Error ? err.message : 'Search failed');
-                            setResults([]);
-                        } finally {
-                            setLoading(false);
-                            resolve();
-                        }
-                    }, debounceMs);
-                });
-            };
-        })(),
-        [mediaType, debounceMs]
-    );
-
+    
+    const performSearch = useCallback(async (searchQuery: string) => {
+        if (!searchQuery.trim()) {
+            setResults([]);
+            return;
+        }
+        
+        try {
+            setLoading(true);
+            setError(null);
+            
+            let searchResults: (TMDBMovie | TMDBTVShow)[] = [];
+            
+            if (mediaType === 'all' || mediaType === 'movie') {
+                const movieResults = await tmdbApiClient.searchMovies(searchQuery);
+                if (movieResults) {
+                    searchResults = [...searchResults, ...movieResults.results.filter(isMovie)];
+                }
+            }
+            
+            if (mediaType === 'all' || mediaType === 'tv') {
+                const tvResults = await tmdbApiClient.searchTVShows(searchQuery);
+                if (tvResults) {
+                    searchResults = [...searchResults, ...tvResults.results.filter(isTVShow)];
+                }
+            }
+            
+            setResults(searchResults);
+        } catch (err) {
+            console.error('Error searching:', err);
+            const errorMessage = err instanceof ApiError 
+                ? err.message 
+                : 'Failed to search media';
+            setError(errorMessage);
+        } finally {
+            setLoading(false);
+        }
+    }, [mediaType]);
+    
+    // Handle auto-search with debounce
     useEffect(() => {
-        if (autoSearch && query) {
-            debouncedSearch(query);
+        if (!autoSearch || !query.trim()) {
+            setResults([]);
+            return;
         }
-    }, [query, autoSearch, debouncedSearch]);
-
-    const search = async (searchQuery: string) => {
-        setQuery(searchQuery);
-        if (!autoSearch) {
-            await debouncedSearch(searchQuery);
-        }
-    };
-
+        
+        const debounceTimer = setTimeout(() => {
+            performSearch(query);
+        }, debounceMs);
+        
+        return () => clearTimeout(debounceTimer);
+    }, [query, autoSearch, debounceMs, performSearch]);
+    
     return {
         query,
+        setQuery,
         results,
         loading,
         error,
-        setQuery,
-        search,
+        search: performSearch
     };
 };
-
-export default useSearch;

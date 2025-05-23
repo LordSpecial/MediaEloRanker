@@ -1,12 +1,14 @@
-// services/api/tmdb/types.ts
+/**
+ * Types for The Movie Database (TMDB) API
+ */
 
-interface TMDBGenre {
+export interface TMDBGenre {
     id: number;
     name: string;
 }
 
 // Base interface for common properties
-interface TMDBMediaBase {
+export interface TMDBMediaBase {
     id: number;
     adult: boolean;
     backdrop_path: string | null;
@@ -16,6 +18,8 @@ interface TMDBMediaBase {
     poster_path: string | null;
     vote_average: number;
     vote_count: number;
+    genre_ids?: number[];
+    genres?: TMDBGenre[];
 }
 
 // Movie interface with detailed fields
@@ -26,7 +30,6 @@ export interface TMDBMovie extends TMDBMediaBase {
     video: boolean;
     // Detailed fields from movie details endpoint
     runtime?: number;
-    genres?: TMDBGenre[];
     budget?: number;
     revenue?: number;
     status?: string;
@@ -52,7 +55,6 @@ export interface TMDBTVShow extends TMDBMediaBase {
     original_name: string;
     first_air_date: string;
     // Detailed fields from TV details endpoint
-    genres?: TMDBGenre[];
     episode_run_time?: number[];
     created_by?: Array<{
         id: number;
@@ -99,13 +101,6 @@ export interface TMDBTVShow extends TMDBMediaBase {
     type?: string;
 }
 
-export interface TMDBResponse<T> {
-    page: number;
-    results: T[];
-    total_pages: number;
-    total_results: number;
-}
-
 export interface TMDBCastMember {
     id: number;
     name: string;
@@ -119,7 +114,7 @@ export interface TMDBCrewMember {
     name: string;
     job: string;
     department: string;
-    profile_path?: string | null; // Make profile_path optional
+    profile_path?: string | null;
 }
 
 export interface TMDBCredits {
@@ -127,4 +122,4 @@ export interface TMDBCredits {
     crew: TMDBCrewMember[];
 }
 
-export type TMDBMediaItem = TMDBMovie | TMDBTVShow;
+export type TMDBMediaItem = TMDBMovie | TMDBTVShow; 

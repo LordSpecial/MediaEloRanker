@@ -2,146 +2,9 @@ import React, { useState } from 'react';
 import { updateProfile } from 'firebase/auth';
 import { auth } from '../../firebase';
 import { useAuth } from '../../hooks/useAuth';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { User, Star, Clock, LogOut } from 'lucide-react';
-import { MediaCarousel, generateMockMediaItems } from '../media/MediaComponents';
-import {useNavigate} from "react-router-dom";
-import {useMovies, useTV} from "../../hooks/tmdb";
-import {formatMediaItem} from "../../services/utils/mediaUtils.ts";
-import {getImageUrl} from "../../services/config/tmdb.config.ts";
 
-// Home Page
-export const HomePage = () => {
-    return (
-        <div className="min-h-screen bg-gray-900 pt-20 px-4">
-            <div className="max-w-7xl mx-auto space-y-6">
-                <h1 className="text-4xl font-bold text-white mb-8">Welcome to MediaRank</h1>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Trending Now</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4 text-gray-300">
-                                <p>• The Latest Blockbuster</p>
-                                <p>• Popular TV Series</p>
-                                <p>• New Releases</p>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Your Recent Activity</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4 text-gray-300">
-                                <p>• Recently Ranked Items</p>
-                                <p>• Latest Reviews</p>
-                                <p>• Watchlist Updates</p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-// Discover Page
-export const DiscoverPage = () => {
-    const navigate = useNavigate();
-    const { movies: trendingMovies, loading: moviesLoading } = useMovies('trending', { timeWindow: 'week' });
-    const { shows: trendingTV, loading: tvLoading } = useTV('trending', { timeWindow: 'week' });
-
-    // Format and type-check the media items
-    const formattedMovies = React.useMemo(() =>
-            trendingMovies.map(formatMediaItem),
-        [trendingMovies]
-    );
-
-    const formattedTVShows = React.useMemo(() =>
-            trendingTV.map(formatMediaItem),
-        [trendingTV]
-    );
-
-    const categories = [
-        {
-            title: 'Trending Movies',
-            type: 'movies',
-            items: formattedMovies,
-            loading: moviesLoading
-        },
-        {
-            title: 'Popular TV Shows',
-            type: 'tv',
-            items: formattedTVShows,
-            loading: tvLoading
-        },
-        {
-            title: 'Popular Anime',
-            type: 'anime',
-            items: generateMockMediaItems(10),
-            loading: false
-        },
-        {
-            title: 'Hot Albums',
-            type: 'music',
-            items: generateMockMediaItems(10),
-            loading: false
-        }
-    ];
-
-    return (
-        <div className="min-h-screen bg-gray-900 pt-20 px-4">
-            <div className="max-w-7xl mx-auto">
-                <h1 className="text-4xl font-bold text-white mb-8">Discover</h1>
-
-                {categories.map((category) => (
-                    <MediaCarousel
-                        key={category.type}
-                        title={category.title}
-                        items={category.items}
-                        onExplore={() => navigate(`/explore/${category.type}`)}
-                        loading={category.loading}
-                    />
-                ))}
-            </div>
-        </div>
-    );
-};
-
-// Rank Page
-export const RankPage = () => {
-    return (
-        <div className="min-h-screen bg-gray-900 pt-20 px-4">
-            <div className="max-w-7xl mx-auto">
-                <h1 className="text-4xl font-bold text-white mb-8">Rank Your Media</h1>
-
-                <Card className="bg-gray-800 border-gray-700">
-                    <CardHeader>
-                        <CardTitle className="text-white">Create New Ranking</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4 text-gray-300">
-                            <p>Drag and drop your favorite media items to create custom rankings</p>
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                {[1, 2, 3, 4].map((item) => (
-                                    <div key={item} className="p-4 bg-gray-700 rounded-lg">
-                                        Placeholder Item {item}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-        </div>
-    );
-};
-
-// Profile Page
 export const ProfilePage = () => {
     const { user } = useAuth();
     const [displayName, setDisplayName] = useState(user?.displayName || '');
@@ -326,3 +189,5 @@ export const ProfilePage = () => {
         </div>
     );
 };
+
+export default ProfilePage; 

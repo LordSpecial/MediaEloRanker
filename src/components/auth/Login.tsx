@@ -1,32 +1,17 @@
 import React, { useState } from 'react';
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from '../../firebase';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import viteLogo from '/vite.svg';
 import './AuthStyles.css';
 
 const Login: React.FC = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
+    const { login, loading, error } = useAuth();
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError('');
-        setIsLoading(true);
-
-        try {
-            await signInWithEmailAndPassword(auth, email, password);
-        } catch (error: any) {
-            setError(
-                error.code === 'auth/invalid-credential'
-                    ? 'Invalid email or password'
-                    : 'An error occurred. Please try again.'
-            );
-        } finally {
-            setIsLoading(false);
-        }
+        await login(email, password);
     };
 
     return (
@@ -68,15 +53,20 @@ const Login: React.FC = () => {
                     <button
                         type="submit"
                         className="auth-button"
-                        disabled={isLoading}
+                        disabled={loading}
                     >
-                        {isLoading ? 'Signing in...' : 'Sign In'}
+                        {loading ? 'Signing in...' : 'Sign In'}
                     </button>
                 </form>
 
-                <Link to="/register" className="auth-link">
-                    Don't have an account? Sign up
-                </Link>
+                <div className="auth-links">
+                    <Link to="/register" className="auth-link">
+                        Don't have an account? Sign up
+                    </Link>
+                    <Link to="/forgot-password" className="auth-link mt-2">
+                        Forgot password?
+                    </Link>
+                </div>
             </div>
         </div>
     );

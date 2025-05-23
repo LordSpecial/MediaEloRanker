@@ -1,8 +1,15 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, Compass, Award, Library, User, Film, Tv, Music, PlayCircle } from 'lucide-react';
+import { Home, Compass, Award, Library, User, Film, Tv, Music, PlayCircle, LogOut, LucideIcon } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 
-const NavDropdownItem = ({ icon: Icon, text, to }) => {
+interface NavDropdownItemProps {
+    icon: LucideIcon;
+    text: string;
+    to: string;
+}
+
+const NavDropdownItem = ({ icon: Icon, text, to }: NavDropdownItemProps) => {
     const navigate = useNavigate();
 
     return (
@@ -18,6 +25,14 @@ const NavDropdownItem = ({ icon: Icon, text, to }) => {
 
 const Navbar = () => {
     const [isDiscoverOpen, setIsDiscoverOpen] = useState(false);
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const { logout, user } = useAuth();
+    const navigate = useNavigate();
+
+    const handleLogout = async () => {
+        await logout();
+        navigate('/login');
+    };
 
     const mediaCategories = [
         { icon: Film, text: 'Movies', path: '/explore/movies' },
@@ -106,20 +121,44 @@ const Navbar = () => {
                                 }
                             >
                                 <Library size={20} />
-                                <span>My Library</span>
+                                <span>Library</span>
                             </NavLink>
 
-                            <NavLink
-                                to="/profile"
-                                className={({ isActive }) =>
-                                    `flex items-center space-x-2 text-gray-300 hover:text-white transition-colors ${
-                                        isActive ? 'text-white' : ''
-                                    }`
-                                }
+                            {/* Profile Menu */}
+                            <div
+                                className="relative"
+                                onMouseEnter={() => setIsProfileOpen(true)}
+                                onMouseLeave={() => setIsProfileOpen(false)}
                             >
-                                <User size={20} />
-                                <span>Profile</span>
-                            </NavLink>
+                                <NavLink
+                                    to="/profile"
+                                    className={({ isActive }) =>
+                                        `flex items-center space-x-2 text-gray-300 hover:text-white transition-colors ${
+                                            isActive ? 'text-white' : ''
+                                        }`
+                                    }
+                                >
+                                    <User size={20} />
+                                    <span>{user?.displayName || 'Profile'}</span>
+                                </NavLink>
+
+                                {/* Profile Dropdown */}
+                                <div
+                                    className={`absolute right-0 w-48 mt-2 py-2 bg-gray-800 rounded-md shadow-lg transition-all duration-200 ${
+                                        isProfileOpen
+                                            ? 'opacity-100 translate-y-0 visible'
+                                            : 'opacity-0 -translate-y-2 invisible'
+                                    }`}
+                                >
+                                    <div
+                                        onClick={handleLogout}
+                                        className="flex items-center space-x-2 px-4 py-3 hover:bg-gray-700 cursor-pointer transition-colors text-red-400 hover:text-red-300"
+                                    >
+                                        <LogOut size={18} />
+                                        <span>Logout</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

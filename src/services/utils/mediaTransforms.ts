@@ -1,6 +1,7 @@
 // services/utils/mediaTransforms.ts
-import type { TMDBMovie, TMDBTVShow, TMDBCastMember, TMDBCrewMember } from '../api/tmdb/types';
-import type { MediaMetadata, FilmTVMetadata } from '../../hooks/useLibrary';
+import { TMDBMovie, TMDBTVShow, TMDBCastMember, TMDBCrewMember } from '@/types/api/tmdb';
+import { MediaMetadata } from '@/types/media/common';
+import { FilmTVMetadata } from '@/types/media/movie';
 
 export const convertTMDBToMetadata = (
     media: TMDBMovie | TMDBTVShow,
