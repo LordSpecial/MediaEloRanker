@@ -70,14 +70,51 @@ const EloComparison: React.FC<EloComparisonProps> = ({
   const [eloMetadata, setEloMetadata] = useState<EloMetadata | null>(null);
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedMethod, setSelectedMethod] = useState<string>('default');
-  const [anchorItem, setAnchorItem] = useState<ComparisonItem | null>(null);
+  const [anchorItem, setAnchorItem] = useState<MediaDetail | null>(null);
   const [showEloChange, setShowEloChange] = useState<boolean>(true);
+  const [anchorSearchTerm, setAnchorSearchTerm] = useState<string>("");
+  const [anchorSearchResults, setAnchorSearchResults] = useState<MediaDetail[]>([]);
+  const [anchorSearchLoading, setAnchorSearchLoading] = useState<boolean>(false);
+  const [userLibrary, setUserLibrary] = useState<MediaDetail[]>([]);
 
   // Fetch ELO metadata once
   useEffect(() => {
     if (user) {
       eloService.getEloMetadata().then(setEloMetadata);
     }
+  }, [user]);
+
+  // Fetch user's library on mount
+  useEffect(() => {
+    const fetchUserLibrary = async () => {
+      if (!user) return;
+      try {
+        // Assume user's library is a subcollection: users/{uid}/library
+        // Each doc has a mediaId field
+        const librarySnap = await (await import('firebase/firestore')).getDocs(
+          (await import('firebase/firestore')).collection(db, 'users', user.uid, 'library')
+        );
+        const mediaIds = librarySnap.docs.map(doc => doc.data().mediaId).filter(Boolean);
+        if (mediaIds.length === 0) {
+          setUserLibrary([]);
+          return;
+        }
+        // Fetch metadata for all mediaIds
+        const mediaPromises = mediaIds.map(async (mediaId: string) => {
+          const mediaRef = (await import('firebase/firestore')).doc(db, 'mediaMetadata', mediaId);
+          const mediaSnap = await (await import('firebase/firestore')).getDoc(mediaRef);
+          if (mediaSnap.exists()) {
+            return { id: mediaId, ...mediaSnap.data() };
+          }
+          return null;
+        });
+        const mediaResults = await Promise.all(mediaPromises);
+        setUserLibrary(mediaResults.filter((item): item is MediaDetail => !!item));
+      } catch (err) {
+        setUserLibrary([]);
+      }
+    };
+    fetchUserLibrary();
   }, [user]);
 
   // Initial load and preload
@@ -94,51 +131,94 @@ const EloComparison: React.FC<EloComparisonProps> = ({
     // eslint-disable-next-line
   }, [user, selectedType, selectedMethod, anchorItem]);
 
-  // Preload the next pair
-  const preloadNextPair = async () => {
-    if (!user) return;
-    try {
-      const typeArg = selectedType === 'all' ? null : selectedType;
-      const pair = await eloService.selectPairForComparison(user.uid, typeArg) as ComparisonItem[];
-      if (pair && pair.length >= 2) {
-        const mediaIds = pair.map(item => item.mediaId).filter(Boolean);
-        const details = await fetchMediaDetails(mediaIds);
-        setNextPair(pair);
-        setNextMediaDetails(details);
-      } else {
-        setNextPair(null);
-        setNextMediaDetails({});
-      }
-    } catch {
-      setNextPair(null);
-      setNextMediaDetails({});
-    }
+  // Helper to get a random challenger from user's library (not anchor)
+  const getRandomChallenger = async (excludeId: string) => {
+    // Filter userLibrary to exclude the anchor
+    const challengers = userLibrary.filter(item => item.id !== excludeId);
+    if (challengers.length === 0) return null;
+    // Pick a random challenger
+    const random = challengers[Math.floor(Math.random() * challengers.length)];
+    // Build a ComparisonItem for challenger
+    return {
+      id: random.id,
+      mediaId: random.id,
+      type: random.type,
+      globalEloScore: random.eloRating,
+      globalEloMatches: random.eloMatches,
+    };
   };
 
-  // Modified loadPair to use preloaded pair if available
+  // Modified loadPair to only replace challenger in compareSingle mode
   const loadPair = async () => {
     if (!user) return;
     setLoading(true);
     setError(null);
     try {
-      const typeArg = selectedType === 'all' ? null : selectedType;
-      const pair = await eloService.selectPairForComparison(user.uid, typeArg) as ComparisonItem[];
-      if (pair && pair.length > 0) {
-        const missingProps = pair.filter(item => {
-          return !('mediaId' in item) || !('type' in item);
-        });
-        if (missingProps.length > 0) {
-          console.warn("Some items are missing required properties:", missingProps);
+      let pair: ComparisonItem[] = [];
+      let details: Record<string, any> = {};
+      if (selectedMethod === 'compareSingle' && anchorItem) {
+        // Anchor is always first, fetch a random challenger (not anchor)
+        const challenger = await getRandomChallenger(anchorItem.id);
+        if (challenger) {
+          // Fetch display info from mediaMetadata
+          const mediaIds = [anchorItem.id, challenger.mediaId];
+          details = await fetchMediaDetails(mediaIds);
+          // Fetch ELO data from user's library for both anchor and challenger
+          let anchorElo = null;
+          let challengerElo = null;
+          try {
+            const [anchorSnap, challengerSnap] = await Promise.all([
+              (await import('firebase/firestore')).getDoc((await import('firebase/firestore')).doc(db, 'users', user.uid, 'library', anchorItem.id)),
+              (await import('firebase/firestore')).getDoc((await import('firebase/firestore')).doc(db, 'users', user.uid, 'library', challenger.mediaId)),
+            ]);
+            anchorElo = anchorSnap.exists() ? anchorSnap.data() : null;
+            challengerElo = challengerSnap.exists() ? challengerSnap.data() : null;
+          } catch (e) {
+            anchorElo = null;
+            challengerElo = null;
+          }
+          pair = [
+            {
+              id: anchorItem.id,
+              mediaId: anchorItem.id,
+              type: anchorItem.type,
+              globalEloScore: anchorElo?.globalEloScore !== undefined ? anchorElo.globalEloScore : 1500,
+              globalEloMatches: anchorElo?.globalEloMatches !== undefined ? anchorElo.globalEloMatches : 0,
+              _missingElo: anchorElo?.globalEloScore === undefined,
+            },
+            {
+              ...challenger,
+              globalEloScore: challengerElo?.globalEloScore !== undefined ? challengerElo.globalEloScore : 1500,
+              globalEloMatches: challengerElo?.globalEloMatches !== undefined ? challengerElo.globalEloMatches : 0,
+              _missingElo: challengerElo?.globalEloScore === undefined,
+            }
+          ];
+        } else {
+          pair = [];
+          details = {};
         }
-        const mediaIds = pair.map(item => item.mediaId).filter(Boolean);
-        const details = await fetchMediaDetails(mediaIds);
-        setMediaDetails(details);
+      } else if (selectedMethod === 'compareSingle' && !anchorItem) {
+        // No anchor selected: show nothing
+        pair = [];
+        details = {};
+      } else {
+        // Default mode
+        const typeArg = selectedType === 'all' ? null : selectedType;
+        pair = await eloService.selectPairForComparison(user.uid, typeArg) as ComparisonItem[];
+        if (pair && pair.length > 0) {
+          const mediaIds = pair.map(item => item.mediaId).filter(Boolean);
+          details = await fetchMediaDetails(mediaIds);
+        }
       }
       if (!pair || pair.length < 2) {
-        setError('Not enough items available for comparison. Please add more media to your library or change your filter.');
+        setError(selectedMethod === 'compareSingle' && !anchorItem
+          ? 'Select an anchor item to begin.'
+          : 'Not enough items available for comparison. Please add more media to your library or change your filter.'
+        );
         setItems([]);
       } else {
         setItems(pair);
+        setMediaDetails(details);
         preloadNextPair();
       }
     } catch (err: any) {
@@ -146,6 +226,70 @@ const EloComparison: React.FC<EloComparisonProps> = ({
       setItems([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Preload the next pair (only preload challenger in compareSingle mode)
+  const preloadNextPair = async () => {
+    if (!user) return;
+    try {
+      if (selectedMethod === 'compareSingle' && anchorItem) {
+        const challenger = await getRandomChallenger(anchorItem.id);
+        if (challenger) {
+          const mediaIds = [anchorItem.id, challenger.mediaId];
+          const details = await fetchMediaDetails(mediaIds);
+          // Fetch ELO data from user's library for both anchor and challenger
+          let anchorElo = null;
+          let challengerElo = null;
+          try {
+            const [anchorSnap, challengerSnap] = await Promise.all([
+              (await import('firebase/firestore')).getDoc((await import('firebase/firestore')).doc(db, 'users', user.uid, 'library', anchorItem.id)),
+              (await import('firebase/firestore')).getDoc((await import('firebase/firestore')).doc(db, 'users', user.uid, 'library', challenger.mediaId)),
+            ]);
+            anchorElo = anchorSnap.exists() ? anchorSnap.data() : null;
+            challengerElo = challengerSnap.exists() ? challengerSnap.data() : null;
+          } catch (e) {
+            anchorElo = null;
+            challengerElo = null;
+          }
+          let pair = [
+            {
+              id: anchorItem.id,
+              mediaId: anchorItem.id,
+              type: anchorItem.type,
+              globalEloScore: anchorElo?.globalEloScore !== undefined ? anchorElo.globalEloScore : 1500,
+              globalEloMatches: anchorElo?.globalEloMatches !== undefined ? anchorElo.globalEloMatches : 0,
+              _missingElo: anchorElo?.globalEloScore === undefined,
+            },
+            {
+              ...challenger,
+              globalEloScore: challengerElo?.globalEloScore !== undefined ? challengerElo.globalEloScore : 1500,
+              globalEloMatches: challengerElo?.globalEloMatches !== undefined ? challengerElo.globalEloMatches : 0,
+              _missingElo: challengerElo?.globalEloScore === undefined,
+            }
+          ];
+          setNextPair(pair);
+          setNextMediaDetails(details);
+        } else {
+          setNextPair(null);
+          setNextMediaDetails({});
+        }
+      } else {
+        const typeArg = selectedType === 'all' ? null : selectedType;
+        const pair = await eloService.selectPairForComparison(user.uid, typeArg) as ComparisonItem[];
+        if (pair && pair.length >= 2) {
+          const mediaIds = pair.map(item => item.mediaId).filter(Boolean);
+          const details = await fetchMediaDetails(mediaIds);
+          setNextPair(pair);
+          setNextMediaDetails(details);
+        } else {
+          setNextPair(null);
+          setNextMediaDetails({});
+        }
+      }
+    } catch {
+      setNextPair(null);
+      setNextMediaDetails({});
     }
   };
 
@@ -181,6 +325,18 @@ const EloComparison: React.FC<EloComparisonProps> = ({
       setTimeout(() => {
         setRatingOverlays(null);
         setResult(null);
+        if (selectedMethod === 'compareSingle' && anchorItem) {
+          // Optimistically update anchor stats for next pair
+          let updatedAnchor = { ...anchorItem };
+          if (anchorItem.id === updateResult.winner.id) {
+            updatedAnchor.eloRating = updateResult.winner.newRating;
+            updatedAnchor.eloMatches = (anchorItem.eloMatches || 0) + 1;
+          } else if (anchorItem.id === updateResult.loser.id) {
+            updatedAnchor.eloRating = updateResult.loser.newRating;
+            updatedAnchor.eloMatches = (anchorItem.eloMatches || 0) + 1;
+          }
+          setAnchorItem(updatedAnchor);
+        }
         if (nextPair && nextPair.length >= 2) {
           setItems(nextPair);
           setMediaDetails(nextMediaDetails);
@@ -192,8 +348,19 @@ const EloComparison: React.FC<EloComparisonProps> = ({
         }
       }, 1250);
     } else {
-      // Skip overlay, go straight to next pair
       if (onComparisonComplete) onComparisonComplete(updateResult);
+      if (selectedMethod === 'compareSingle' && anchorItem) {
+        // Optimistically update anchor stats for next pair
+        let updatedAnchor = { ...anchorItem };
+        if (anchorItem.id === updateResult.winner.id) {
+          updatedAnchor.eloRating = updateResult.winner.newRating;
+          updatedAnchor.eloMatches = (anchorItem.eloMatches || 0) + 1;
+        } else if (anchorItem.id === updateResult.loser.id) {
+          updatedAnchor.eloRating = updateResult.loser.newRating;
+          updatedAnchor.eloMatches = (anchorItem.eloMatches || 0) + 1;
+        }
+        setAnchorItem(updatedAnchor);
+      }
       if (nextPair && nextPair.length >= 2) {
         setItems(nextPair);
         setMediaDetails(nextMediaDetails);
@@ -276,10 +443,34 @@ const EloComparison: React.FC<EloComparisonProps> = ({
         setTimeout(() => {
           console.log('Overlay display time complete, loading next pair');
           setRatingOverlays(null);
+          if (selectedMethod === 'compareSingle' && anchorItem) {
+            // Optimistically update anchor stats for next pair (draw)
+            let updatedAnchor = { ...anchorItem };
+            if (anchorItem.id === updateResult.winner.id) {
+              updatedAnchor.eloRating = updateResult.winner.newRating;
+              updatedAnchor.eloMatches = (anchorItem.eloMatches || 0) + 1;
+            } else if (anchorItem.id === updateResult.loser.id) {
+              updatedAnchor.eloRating = updateResult.loser.newRating;
+              updatedAnchor.eloMatches = (anchorItem.eloMatches || 0) + 1;
+            }
+            setAnchorItem(updatedAnchor);
+          }
           loadPair();
         }, 500);
       } else {
         if (onComparisonComplete) onComparisonComplete(updateResult);
+        if (selectedMethod === 'compareSingle' && anchorItem) {
+          // Optimistically update anchor stats for next pair (draw)
+          let updatedAnchor = { ...anchorItem };
+          if (anchorItem.id === updateResult.winner.id) {
+            updatedAnchor.eloRating = updateResult.winner.newRating;
+            updatedAnchor.eloMatches = (anchorItem.eloMatches || 0) + 1;
+          } else if (anchorItem.id === updateResult.loser.id) {
+            updatedAnchor.eloRating = updateResult.loser.newRating;
+            updatedAnchor.eloMatches = (anchorItem.eloMatches || 0) + 1;
+          }
+          setAnchorItem(updatedAnchor);
+        }
         loadPair();
       }
     } catch (err: any) {
@@ -303,6 +494,35 @@ const EloComparison: React.FC<EloComparisonProps> = ({
     loadPair();
   };
 
+  // Fetch user's media library for anchor search (now from userLibrary)
+  const searchAnchorLibrary = async (term: string) => {
+    setAnchorSearchLoading(true);
+    setAnchorSearchResults([]);
+    try {
+      const results: MediaDetail[] = userLibrary
+        .filter(item =>
+          item &&
+          item.title &&
+          item.title.toLowerCase().includes(term.toLowerCase())
+        );
+      setAnchorSearchResults(results);
+    } catch (err) {
+      setAnchorSearchResults([]);
+    } finally {
+      setAnchorSearchLoading(false);
+    }
+  };
+
+  // When anchorSearchTerm changes, search
+  useEffect(() => {
+    if (anchorSearchTerm.length > 1) {
+      searchAnchorLibrary(anchorSearchTerm);
+    } else {
+      setAnchorSearchResults([]);
+    }
+    // eslint-disable-next-line
+  }, [anchorSearchTerm, mediaDetails]);
+
   if (!user) {
     return (
       <div className="bg-red-100 text-red-800 p-4 rounded-md mb-4">
@@ -313,7 +533,6 @@ const EloComparison: React.FC<EloComparisonProps> = ({
   }
 
   if (loading) {
-    console.log('Rendering loading state');
     return (
       <div className="flex justify-center items-center p-8">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
@@ -321,7 +540,6 @@ const EloComparison: React.FC<EloComparisonProps> = ({
     );
   }
 
-  console.log('Rendering comparison state with items:', items);
   return (
     <div className="min-h-screen bg-gray-900 pt-20 px-4">
       <div className="max-w-3xl mx-auto">
@@ -365,11 +583,36 @@ const EloComparison: React.FC<EloComparisonProps> = ({
               </div>
             </div>
           </div>
-          {/* Anchor picker placeholder */}
+          {/* Anchor picker section for compareSingle */}
           {selectedMethod === 'compareSingle' && (
             <div className="mt-4">
               <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-                <span className="text-gray-300">Anchor selection coming soon...</span>
+                <span className="text-gray-300 block mb-2">Select Anchor Item</span>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 rounded bg-gray-900 text-gray-100 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
+                  placeholder="Search your library..."
+                  value={anchorSearchTerm}
+                  onChange={e => setAnchorSearchTerm(e.target.value)}
+                />
+                {anchorSearchLoading && (
+                  <div className="text-gray-400 text-sm mb-2">Searching...</div>
+                )}
+                <ul className="max-h-40 overflow-y-auto">
+                  {anchorSearchResults.map(item => (
+                    <li key={item.id}>
+                      <button
+                        className={`w-full text-left px-2 py-1 rounded hover:bg-blue-700 transition-colors text-gray-100 ${anchorItem && anchorItem.id === item.id ? 'bg-blue-800 font-bold' : ''}`}
+                        onClick={() => setAnchorItem(item)}
+                      >
+                        {item.title} {item.year ? `(${item.year})` : ''}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                {anchorItem && (
+                  <div className="mt-2 text-blue-400 text-sm">Selected: {anchorItem.title}</div>
+                )}
               </div>
             </div>
           )}
@@ -408,67 +651,149 @@ const EloComparison: React.FC<EloComparisonProps> = ({
                 </button>
               </div>
             ) : (
-              items.map((item, index) => {
-                const mediaDetail = mediaDetails[item.mediaId] || {};
-                const isItemWinner = ratingOverlays && ratingOverlays.winnerId === item.id;
-                const isItemLoser = ratingOverlays && ratingOverlays.loserId === item.id;
-                const showOverlay = isItemWinner || isItemLoser;
-                const ratingChange = isItemWinner ? ratingOverlays?.winnerChange : ratingOverlays?.loserChange;
-                const newRating = isItemWinner ? ratingOverlays?.winnerNewRating : ratingOverlays?.loserNewRating;
-                return (
-                  <div key={item.id} className="flex flex-col items-center">
+              selectedMethod === 'compareSingle' && anchorItem ? (
+                // Show anchor as first card, challenger as second
+                items.map((item, index) => {
+                  const mediaDetail = mediaDetails[item.mediaId] || {};
+                  const isItemWinner = ratingOverlays && ratingOverlays.winnerId === item.id;
+                  const isItemLoser = ratingOverlays && ratingOverlays.loserId === item.id;
+                  const showOverlay = isItemWinner || isItemLoser;
+                  const ratingChange = isItemWinner ? ratingOverlays?.winnerChange : ratingOverlays?.loserChange;
+                  const newRating = isItemWinner ? ratingOverlays?.winnerNewRating : ratingOverlays?.loserNewRating;
+                  return (
+                    <div key={item.id} className="flex flex-col items-center">
+                      <div className="relative w-full pb-[140%] mb-4">
+                        {mediaDetail.imageUrl ? (
+                          <>
+                            <img
+                              src={mediaDetail.imageUrl}
+                              alt={mediaDetail.title || 'Media item'}
+                              className="absolute inset-0 w-full h-full object-cover rounded-md shadow-md"
+                            />
+                            {/* Rating change overlay */}
+                            {showOverlay && (
+                              <div className="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center text-white rounded-md">
+                                <p className="text-2xl font-bold mb-2">{newRating?.toFixed(0)}</p>
+                                <p className={`text-xl font-bold ${ratingChange && ratingChange >= 0 ? "text-green-400" : "text-red-400"}`}>
+                                  {ratingChange && ratingChange > 0 ? "+" : ""}{ratingChange?.toFixed(0)}
+                                </p>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="absolute inset-0 w-full h-full bg-gray-200 flex items-center justify-center rounded-md shadow-md">
+                            <span className="text-gray-500">No Image</span>
+                            {/* Rating change overlay for items without images */}
+                            {showOverlay && (
+                              <div className="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center text-white rounded-md">
+                                <p className="text-2xl font-bold mb-2">{newRating?.toFixed(0)}</p>
+                                <p className={`text-xl font-bold ${ratingChange && ratingChange >= 0 ? "text-green-400" : "text-red-400"}`}>
+                                  {ratingChange && ratingChange > 0 ? "+" : ""}{ratingChange?.toFixed(0)}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <h3 className="text-lg font-semibold mb-1">{mediaDetail.title || `Item ${item.mediaId}`}</h3>
+                      <p className="text-sm text-gray-500 mb-4">{mediaDetail.releaseYear || item.type}</p>
+                      <div className="text-sm text-gray-500 mb-3 text-center">
+                        <p>Current Rating: {item.globalEloScore?.toFixed(0) || 1500}</p>
+                        <p>Comparisons: {item.globalEloMatches || 0}</p>
+                        {item._missingElo && (
+                          <span className="text-yellow-400 font-semibold">No ELO data yet for this item</span>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => {
+                          handleSelection(item.id, items[1-index].id);
+                        }}
+                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-2 w-full"
+                        disabled={ratingOverlays !== null}
+                      >
+                        Prefer This
+                      </button>
+                    </div>
+                  );
+                })
+              ) : selectedMethod === 'compareSingle' && !anchorItem ? (
+                // Show blank card for anchor, nothing for challenger
+                <>
+                  <div className="flex flex-col items-center">
                     <div className="relative w-full pb-[140%] mb-4">
-                      {mediaDetail.imageUrl ? (
-                        <>
-                          <img
-                            src={mediaDetail.imageUrl}
-                            alt={mediaDetail.title || 'Media item'}
-                            className="absolute inset-0 w-full h-full object-cover rounded-md shadow-md"
-                          />
-                          {/* Rating change overlay */}
-                          {showOverlay && (
-                            <div className="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center text-white rounded-md">
-                              <p className="text-2xl font-bold mb-2">{newRating?.toFixed(0)}</p>
-                              <p className={`text-xl font-bold ${ratingChange && ratingChange >= 0 ? "text-green-400" : "text-red-400"}`}>
-                                {ratingChange && ratingChange > 0 ? "+" : ""}{ratingChange?.toFixed(0)}
-                              </p>
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <div className="absolute inset-0 w-full h-full bg-gray-200 flex items-center justify-center rounded-md shadow-md">
-                          <span className="text-gray-500">No Image</span>
-                          {/* Rating change overlay for items without images */}
-                          {showOverlay && (
-                            <div className="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center text-white rounded-md">
-                              <p className="text-2xl font-bold mb-2">{newRating?.toFixed(0)}</p>
-                              <p className={`text-xl font-bold ${ratingChange && ratingChange >= 0 ? "text-green-400" : "text-red-400"}`}>
-                                {ratingChange && ratingChange > 0 ? "+" : ""}{ratingChange?.toFixed(0)}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      <div className="absolute inset-0 w-full h-full bg-gray-900 flex items-center justify-center rounded-md shadow-md border-2 border-dashed border-gray-700">
+                        <span className="text-gray-500">Select an anchor to begin</span>
+                      </div>
                     </div>
-                    <h3 className="text-lg font-semibold mb-1">{mediaDetail.title || `Item ${item.mediaId}`}</h3>
-                    <p className="text-sm text-gray-500 mb-4">{mediaDetail.releaseYear || item.type}</p>
-                    <div className="text-sm text-gray-500 mb-3 text-center">
-                      <p>Current Rating: {item.globalEloScore?.toFixed(0) || 1500}</p>
-                      <p>Comparisons: {item.globalEloMatches || 0}</p>
-                    </div>
-                    <button
-                      onClick={() => {
-                        console.log(`Selection button clicked for item ${index}:`, item.id);
-                        handleSelection(item.id, items[1-index].id);
-                      }}
-                      className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-2 w-full"
-                      disabled={ratingOverlays !== null}
-                    >
-                      Prefer This
-                    </button>
                   </div>
-                );
-              })
+                  <div></div>
+                </>
+              ) : (
+                // Default mode
+                items.map((item, index) => {
+                  const mediaDetail = mediaDetails[item.mediaId] || {};
+                  const isItemWinner = ratingOverlays && ratingOverlays.winnerId === item.id;
+                  const isItemLoser = ratingOverlays && ratingOverlays.loserId === item.id;
+                  const showOverlay = isItemWinner || isItemLoser;
+                  const ratingChange = isItemWinner ? ratingOverlays?.winnerChange : ratingOverlays?.loserChange;
+                  const newRating = isItemWinner ? ratingOverlays?.winnerNewRating : ratingOverlays?.loserNewRating;
+                  return (
+                    <div key={item.id} className="flex flex-col items-center">
+                      <div className="relative w-full pb-[140%] mb-4">
+                        {mediaDetail.imageUrl ? (
+                          <>
+                            <img
+                              src={mediaDetail.imageUrl}
+                              alt={mediaDetail.title || 'Media item'}
+                              className="absolute inset-0 w-full h-full object-cover rounded-md shadow-md"
+                            />
+                            {/* Rating change overlay */}
+                            {showOverlay && (
+                              <div className="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center text-white rounded-md">
+                                <p className="text-2xl font-bold mb-2">{newRating?.toFixed(0)}</p>
+                                <p className={`text-xl font-bold ${ratingChange && ratingChange >= 0 ? "text-green-400" : "text-red-400"}`}>
+                                  {ratingChange && ratingChange > 0 ? "+" : ""}{ratingChange?.toFixed(0)}
+                                </p>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="absolute inset-0 w-full h-full bg-gray-200 flex items-center justify-center rounded-md shadow-md">
+                            <span className="text-gray-500">No Image</span>
+                            {/* Rating change overlay for items without images */}
+                            {showOverlay && (
+                              <div className="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center text-white rounded-md">
+                                <p className="text-2xl font-bold mb-2">{newRating?.toFixed(0)}</p>
+                                <p className={`text-xl font-bold ${ratingChange && ratingChange >= 0 ? "text-green-400" : "text-red-400"}`}>
+                                  {ratingChange && ratingChange > 0 ? "+" : ""}{ratingChange?.toFixed(0)}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <h3 className="text-lg font-semibold mb-1">{mediaDetail.title || `Item ${item.mediaId}`}</h3>
+                      <p className="text-sm text-gray-500 mb-4">{mediaDetail.releaseYear || item.type}</p>
+                      <div className="text-sm text-gray-500 mb-3 text-center">
+                        <p>Current Rating: {item.globalEloScore?.toFixed(0) || 1500}</p>
+                        <p>Comparisons: {item.globalEloMatches || 0}</p>
+                        {item._missingElo && (
+                          <span className="text-yellow-400 font-semibold">No ELO data yet for this item</span>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => {
+                          handleSelection(item.id, items[1-index].id);
+                        }}
+                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-2 w-full"
+                        disabled={ratingOverlays !== null}
+                      >
+                        Prefer This
+                      </button>
+                    </div>
+                  );
+                })
+              )
             )}
           </div>
           <div className="mt-6 text-center">

@@ -46,14 +46,11 @@ export const eloService = {
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         });
-        console.log('ELO system metadata initialized successfully');
         return true;
       } else {
-        console.log('ELO system metadata already exists');
         return false;
       }
     } catch (error) {
-      console.error('Error initializing ELO metadata:', error);
       throw error;
     }
   },
@@ -72,7 +69,6 @@ export const eloService = {
       
       return metadataSnap.data() as EloMetadata;
     } catch (error) {
-      console.error('Error getting ELO metadata:', error);
       throw error;
     }
   },
@@ -91,7 +87,6 @@ export const eloService = {
       const librarySnapshot = await getDocs(libraryRef);
       
       if (librarySnapshot.empty) {
-        console.log('No library items found to initialize');
         return 0;
       }
       
@@ -139,14 +134,10 @@ export const eloService = {
       // Commit all batches
       if (batches.length > 0) {
         await Promise.all(batches.map(batch => batch.commit()));
-        console.log(`ELO fields initialized for ${totalOperations} library items`);
-      } else {
-        console.log('No library items needed ELO field initialization');
       }
       
       return totalOperations;
     } catch (error) {
-      console.error('Error initializing user ELO fields:', error);
       throw error;
     }
   },
@@ -171,7 +162,6 @@ export const eloService = {
         message: `ELO system initialized. Metadata: ${metadataInitialized ? 'Created new' : 'Already exists'}. User items initialized: ${fieldsInitialized}`
       };
     } catch (error: any) {
-      console.error('Error initializing ELO system:', error);
       return {
         success: false,
         message: `Error initializing ELO system: ${error.message}`
@@ -198,7 +188,6 @@ export const eloService = {
       const snapshot = await getDocs(queryRef);
       
       if (snapshot.empty) {
-        console.log('No library items found for random selection');
         return null;
       }
       
@@ -211,7 +200,6 @@ export const eloService = {
         ...randomDoc.data()
       };
     } catch (error) {
-      console.error('Error selecting random item:', error);
       throw error;
     }
   },
@@ -239,8 +227,6 @@ export const eloService = {
         recentPairMap.set(`${pair.item2Id}-${pair.item1Id}`, true);
       });
       
-      console.log(`Found ${recentPairs.length} recent comparisons to avoid`);
-      
       // Keep track of items that were recently the "first" item in a comparison
       // This helps ensure we don't always pick the same first item
       const recentFirstItems = new Set();
@@ -263,7 +249,6 @@ export const eloService = {
       const candidatesSnapshot = await getDocs(candidatesQuery);
       
       if (candidatesSnapshot.empty) {
-        console.log('No library items found for comparison');
         return [];
       }
       
@@ -318,9 +303,6 @@ export const eloService = {
           return item?.mediaId && item?.type;
         });
       
-      // Log the number of filtered candidates
-      console.log(`Found ${candidates.length} valid items for comparison after filtering`);
-      
       // If we have fewer than 2 items, we can't make a comparison
       if (candidates.length < 2) {
         return candidates;
@@ -367,20 +349,13 @@ export const eloService = {
       for (const secondItem of matchPool) {
         const pairKey = `${firstItem.id}-${secondItem.id}`;
         if (!recentPairMap.has(pairKey)) {
-          // Log selection with detailed information for debugging
-          console.log(`Selected comparison pair:
-            First: ${firstItem.id} (Score: ${firstItem.score.toFixed(2)}, Rating: ${firstItem.rating}, RD: ${firstItem.rd}, Matches: ${firstItem.matches})
-            Second: ${secondItem.id} (Score: ${secondItem.score.toFixed(2)}, Rating: ${secondItem.rating}, RD: ${secondItem.rd}, Matches: ${secondItem.matches})
-          `);
           return [firstItem, secondItem];
         }
       }
       
       // If all top matches have been recently compared, take the best match anyway
-      console.log('All top matches recently compared, using best match anyway');
       return [firstItem, matchPool[0]];
     } catch (error) {
-      console.error('Error selecting pair for comparison:', error);
       throw error;
     }
   },
@@ -408,12 +383,10 @@ export const eloService = {
     } catch (error) {
       // If we get a permission error, log it and continue without blocking the app
       if ((error as any)?.message?.includes('permission')) {
-        console.log('Permission error accessing recent comparisons, continuing without this feature');
+        return [];
       } else {
-        console.error('Error getting recent comparisons:', error);
+        throw error;
       }
-      // Return empty array on error so the selection can continue
-      return [];
     }
   },
 
@@ -442,12 +415,10 @@ export const eloService = {
     } catch (error) {
       // If we get a permission error, log it but continue without blocking the app
       if ((error as any)?.message?.includes('permission')) {
-        console.log('Permission error storing recent comparison, continuing without this feature');
+        return false;
       } else {
-        console.error('Error storing comparison pair:', error);
+        throw error;
       }
-      // Don't throw, this is a non-critical operation
-      return false;
     }
   },
 
@@ -477,19 +448,16 @@ export const eloService = {
         });
         
         await batch.commit();
-        console.log(`Cleaned up ${docsToDelete.length} old comparison records`);
       }
       
       return true;
     } catch (error) {
       // If we get a permission error, log it but continue without blocking the app
       if ((error as any)?.message?.includes('permission')) {
-        console.log('Permission error cleaning up old comparisons, continuing without this feature');
+        return false;
       } else {
-        console.error('Error cleaning up old comparisons:', error);
+        throw error;
       }
-      // Don't throw, this is a non-critical operation
-      return false;
     }
   },
 
@@ -502,7 +470,6 @@ export const eloService = {
    */
   async updateRatings(userId: string, winnerId: string, loserId: string, isDraw: boolean = false): Promise<RatingUpdateResult> {
     try {
-      console.log('===== Rating Update Started =====');
       // Get current ratings
       const [winnerSnap, loserSnap] = await Promise.all([
         getDoc(doc(db, `users/${userId}/library`, winnerId)),
@@ -530,9 +497,6 @@ export const eloService = {
       });
       updateResult.winner.id = winnerId;
       updateResult.loser.id = loserId;
-      // Logging for debug
-      console.log(`Initial ratings: ${winnerRating} vs ${loserRating}`);
-      console.log(`Result:`, updateResult);
       // Update database
       const batch = writeBatch(db);
       const isSameCategory = winner.type === loser.type;
@@ -563,10 +527,8 @@ export const eloService = {
         updatedAt: serverTimestamp()
       });
       await batch.commit();
-      console.log('===== Rating Update Completed =====');
       return updateResult;
     } catch (error) {
-      console.error('Error updating ratings:', error);
       throw error;
     }
   },
@@ -614,7 +576,6 @@ export const eloService = {
         };
       });
     } catch (error) {
-      console.error('Error getting top ranked items:', error);
       throw error;
     }
   },
@@ -626,14 +587,11 @@ export const eloService = {
    */
   async resetEloSystem(userId: string) {
     try {
-      console.log(`===== resetEloSystem START for user ${userId} =====`);
-      
       // 1. Get all library items for the user
       const libraryRef = collection(db, `users/${userId}/library`);
       const librarySnapshot = await getDocs(libraryRef);
       
       if (librarySnapshot.empty) {
-        console.log('No library items found to reset');
         return {
           success: true,
           message: 'No library items found to reset',
@@ -704,18 +662,13 @@ export const eloService = {
           batches.push(comparisonsBatch);
         }
       } catch (error) {
-        console.log('Error clearing recent comparisons, but continuing with reset:', error);
       }
       
       // Commit all batches including the metadata batch
       batches.push(metadataBatch);
       
       // Start committing all batches
-      console.log(`Committing ${batches.length} batches to reset ${totalOperations} library items`);
       await Promise.all(batches.map(batch => batch.commit()));
-      
-      console.log(`ELO ratings reset for ${totalOperations} library items`);
-      console.log(`===== resetEloSystem END =====`);
       
       return {
         success: true,
@@ -723,7 +676,6 @@ export const eloService = {
         itemsReset: totalOperations
       };
     } catch (error: any) {
-      console.error('Error resetting ELO system:', error);
       return {
         success: false,
         message: `Error resetting ELO system: ${error.message || 'Unknown error'}`,
