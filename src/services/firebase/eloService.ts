@@ -16,19 +16,13 @@ import {
 import { db } from '../../firebase';
 import { EloMetadata, RatingUpdateResult } from '../../types/elo';
 import { useAuth } from '../../contexts/AuthContext';
+import { expectedOutcome, getAdjustedKFactor, calculateEloResult, DEFAULT_RD } from '../utils/eloMath';
 
 // Constants for ELO calculation
 const DEFAULT_RATING = 1500;
-const DEFAULT_RD = 350; // Rating deviation for new players
 const DEFAULT_K_FACTOR = 20; // Base K-factor
 const K_ADJUSTMENT_STRENGTH = 5.0; // How strongly rating differences affect K-factor adjustments
 const RECENT_COMPARISONS_LIMIT = 20; // Number of recent comparisons to track per user
-
-// Expected outcome calculation using standard ELO formula
-function expectedOutcome(ratingA: number, ratingB: number): number {
-  // Standard ELO formula with 400 scaling factor
-  return 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
-}
 
 // ELO Service implementation
 export const eloService = {
@@ -509,157 +503,72 @@ export const eloService = {
   async updateRatings(userId: string, winnerId: string, loserId: string, isDraw: boolean = false): Promise<RatingUpdateResult> {
     try {
       console.log('===== Rating Update Started =====');
-      
       // Get current ratings
       const [winnerSnap, loserSnap] = await Promise.all([
         getDoc(doc(db, `users/${userId}/library`, winnerId)),
         getDoc(doc(db, `users/${userId}/library`, loserId))
       ]);
-      
       if (!winnerSnap.exists() || !loserSnap.exists()) {
         throw new Error('One or both media items not found');
       }
-      
       const winner = winnerSnap.data();
       const loser = loserSnap.data();
       const metadata = await this.getEloMetadata();
-      
       // Get current ratings and matches
       const winnerRating = winner.globalEloScore || DEFAULT_RATING;
       const loserRating = loser.globalEloScore || DEFAULT_RATING;
       const winnerMatches = winner.globalEloMatches || 0;
       const loserMatches = loser.globalEloMatches || 0;
-      
-      // Calculate expected outcomes
-      const winnerExpected = expectedOutcome(winnerRating, loserRating);
-      const loserExpected = expectedOutcome(loserRating, winnerRating);
-      
-      // Get base K-factors based on experience
-      const winnerK = this.getAdjustedKFactor(winnerMatches, metadata);
-      const loserK = this.getAdjustedKFactor(loserMatches, metadata);
-      
-      // Calculate actual outcomes
-      const [winnerOutcome, loserOutcome] = isDraw ? [0.5, 0.5] : [1.0, 0.0];
-      
-      // Calculate rating changes
-      // The change is proportional to:
-      // 1. The K-factor (experience-based)
-      // 2. The difference between actual and expected outcome
-      // 3. The rating difference (higher rated player risks more, gains less)
-      const ratingDiff = winnerRating - loserRating;
-      const diffFactor = Math.abs(ratingDiff) / 400; // Normalize rating difference
-      
-      // Higher rated player's K-factor is reduced, lower rated player's is increased
-      let winnerKMod = winnerK;
-      let loserKMod = loserK;
-      
-      if (!isDraw) {
-        // Adjust K-factors based on whether the outcome was expected or unexpected
-        const wasExpectedOutcome = (ratingDiff > 0 && winnerOutcome === 1.0) || (ratingDiff < 0 && winnerOutcome === 0.0);
-        const adjustmentFactor = diffFactor * K_ADJUSTMENT_STRENGTH;
-
-        if (wasExpectedOutcome) {
-          // Expected outcome - reduce rating changes
-          winnerKMod *= Math.max(0.5, 1 - adjustmentFactor); // Winner gains less
-          loserKMod *= Math.max(0.5, 1 - adjustmentFactor);  // Loser loses less
-        } else {
-          // Unexpected outcome - increase rating changes
-          winnerKMod *= Math.min(1.5, 1 + adjustmentFactor); // Winner gains more
-          loserKMod *= Math.min(1.5, 1 + adjustmentFactor);  // Loser loses more
-        }
-      }
-      
-      const winnerChange = winnerKMod * (winnerOutcome - winnerExpected);
-      const loserChange = loserKMod * (loserOutcome - loserExpected);
-      
-      // Apply changes and round to 1 decimal
-      const newWinnerRating = Math.round((winnerRating + winnerChange) * 10) / 10;
-      const newLoserRating = Math.round((loserRating + loserChange) * 10) / 10;
-      
-      console.log(`Initial ratings: ${winnerRating} vs ${loserRating} (diff: ${ratingDiff.toFixed(1)})`);
-      console.log(`Base K-factors: ${winnerK} vs ${loserK}`);
-      console.log(`Modified K-factors: ${winnerKMod.toFixed(1)} vs ${loserKMod.toFixed(1)}`);
-      console.log(`Expected outcomes: ${winnerExpected.toFixed(3)} vs ${loserExpected.toFixed(3)}`);
-      console.log(`Rating changes: ${winnerChange.toFixed(1)} / ${loserChange.toFixed(1)}`);
-      console.log(`Final ratings: ${newWinnerRating} / ${newLoserRating}`);
-      
+      // Use shared ELO calculation
+      const updateResult = calculateEloResult({
+        winnerRating,
+        loserRating,
+        winnerMatches,
+        loserMatches,
+        metadata,
+        isDraw
+      });
+      updateResult.winner.id = winnerId;
+      updateResult.loser.id = loserId;
+      // Logging for debug
+      console.log(`Initial ratings: ${winnerRating} vs ${loserRating}`);
+      console.log(`Result:`, updateResult);
       // Update database
       const batch = writeBatch(db);
       const isSameCategory = winner.type === loser.type;
-      
       batch.update(winnerSnap.ref, {
-        globalEloScore: newWinnerRating,
+        globalEloScore: updateResult.winner.newRating,
         globalEloMatches: winnerMatches + 1,
         eloRD: DEFAULT_RD / (1 + winnerMatches/50),
         lastUpdated: serverTimestamp(),
         provisional: winnerMatches + 1 < metadata.provisionalThreshold,
         ...(isSameCategory && {
-          categoryEloScore: newWinnerRating,
+          categoryEloScore: updateResult.winner.newRating,
           categoryEloMatches: (winner.categoryEloMatches || 0) + 1
         })
       });
-      
       batch.update(loserSnap.ref, {
-        globalEloScore: newLoserRating,
+        globalEloScore: updateResult.loser.newRating,
         globalEloMatches: loserMatches + 1,
         eloRD: DEFAULT_RD / (1 + loserMatches/50),
         lastUpdated: serverTimestamp(),
         provisional: loserMatches + 1 < metadata.provisionalThreshold,
         ...(isSameCategory && {
-          categoryEloScore: newLoserRating,
+          categoryEloScore: updateResult.loser.newRating,
           categoryEloMatches: (loser.categoryEloMatches || 0) + 1
         })
       });
-      
       batch.update(doc(db, 'eloSystem', 'metadata'), {
         totalComparisons: metadata.totalComparisons + 1,
         updatedAt: serverTimestamp()
       });
-      
       await batch.commit();
-      
-      const result = {
-        winner: {
-          id: winnerId,
-          oldRating: winnerRating,
-          newRating: newWinnerRating,
-          ratingChange: newWinnerRating - winnerRating
-        },
-        loser: {
-          id: loserId,
-          oldRating: loserRating,
-          newRating: newLoserRating,
-          ratingChange: newLoserRating - loserRating
-        }
-      };
-      
       console.log('===== Rating Update Completed =====');
-      return result;
-      
+      return updateResult;
     } catch (error) {
       console.error('Error updating ratings:', error);
       throw error;
     }
-  },
-
-  /**
-   * Calculate an adjusted K-factor based on number of matches
-   * @param matches Number of matches the item has participated in
-   * @param metadata ELO system metadata
-   * @returns Adjusted K-factor
-   */
-  getAdjustedKFactor(matches: number, metadata: any): number {
-    // Base K-factor adjustment based on matches
-    if (matches < 5) {
-      return DEFAULT_K_FACTOR * 2.0; // Higher K for very new items
-    } else if (matches < 10) {
-      return DEFAULT_K_FACTOR * 1.5; // Moderately high for newer items
-    } else if (matches < metadata.provisionalThreshold) {
-      return DEFAULT_K_FACTOR * 1.2; // Slightly higher K for provisional items
-    } else if (matches >= 50) {
-      return DEFAULT_K_FACTOR * 0.8; // Lower K for very established items
-    }
-    return DEFAULT_K_FACTOR; // Normal K for established items
   },
 
   /**
