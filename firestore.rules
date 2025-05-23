@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // ELO system metadata - authenticated users can read/write
+    match /eloSystem/{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Media metadata - public read, authenticated users can create & update
+    match /mediaMetadata/{mediaId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      // Allow updates when authenticated (needed for adding ELO fields)
+      allow update: if isAuthenticated();
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated() && isOwner(userId);
+      allow write: if isAuthenticated() && isOwner(userId);
+      
+      // Library subcollection
+      match /library/{mediaId} {
+        allow read: if isAuthenticated() && isOwner(userId);
+        allow write: if isAuthenticated() && isOwner(userId);
+      }
+      
+      // Recent comparisons subcollection - new rule
+      match /recentComparisons/{comparisonId} {
+        allow read, write: if isAuthenticated() && isOwner(userId);
+      }
+    }
+  }
+} 

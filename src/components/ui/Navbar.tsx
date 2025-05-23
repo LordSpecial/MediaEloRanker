@@ -27,6 +27,7 @@ const Navbar = () => {
     const [isDiscoverOpen, setIsDiscoverOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isAdminOpen, setIsAdminOpen] = useState(false);
+    const [isRankOpen, setIsRankOpen] = useState(false);
     const { logout, user } = useAuth();
     const navigate = useNavigate();
 
@@ -44,6 +45,11 @@ const Navbar = () => {
 
     const adminCategories = [
         { icon: Award, text: 'ELO System', path: '/admin/elo' },
+    ];
+    
+    const rankCategories = [
+        { icon: Award, text: 'Rankings', path: '/rank' },
+        { icon: Film, text: 'Compare Media', path: '/rank/compare' },
     ];
 
     return (
@@ -105,17 +111,42 @@ const Navbar = () => {
                                 </div>
                             </div>
 
-                            <NavLink
-                                to="/rank"
-                                className={({ isActive }) =>
-                                    `flex items-center space-x-2 text-gray-300 hover:text-white transition-colors ${
-                                        isActive ? 'text-white' : ''
-                                    }`
-                                }
+                            {/* Rank Dropdown */}
+                            <div
+                                className="relative"
+                                onMouseEnter={() => setIsRankOpen(true)}
+                                onMouseLeave={() => setIsRankOpen(false)}
                             >
-                                <Award size={20} />
-                                <span>Rank</span>
-                            </NavLink>
+                                <NavLink
+                                    to="/rank"
+                                    className={({ isActive }) =>
+                                        `flex items-center space-x-2 text-gray-300 hover:text-white transition-colors ${
+                                            isActive ? 'text-white' : ''
+                                        }`
+                                    }
+                                >
+                                    <Award size={20} />
+                                    <span>Rank</span>
+                                </NavLink>
+
+                                {/* Dropdown Menu */}
+                                <div
+                                    className={`absolute left-0 w-48 mt-2 py-2 bg-gray-800 rounded-md shadow-lg transition-all duration-200 ${
+                                        isRankOpen
+                                            ? 'opacity-100 translate-y-0 visible'
+                                            : 'opacity-0 -translate-y-2 invisible'
+                                    }`}
+                                >
+                                    {rankCategories.map((category, index) => (
+                                        <NavDropdownItem
+                                            key={index}
+                                            icon={category.icon}
+                                            text={category.text}
+                                            to={category.path}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
 
                             <NavLink
                                 to="/library"

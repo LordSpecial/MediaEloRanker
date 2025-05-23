@@ -80,8 +80,17 @@ export const LibraryPage = () => {
     
     // Update local state when parent items change
     React.useEffect(() => {
-        setLocalMediaItems(mediaCardItems);
-    }, [mediaCardItems]);
+        // Convert to MediaCardProps format inside the effect to avoid dependency on mediaCardItems
+        const formattedItems = filteredItems.map(item => ({
+            id: item.id,
+            title: item.title,
+            imageUrl: item.imageUrl,
+            rating: item.userRating?.toString() || 'NR',
+            year: item.releaseYear,
+            mediaType: item.type,
+        }));
+        setLocalMediaItems(formattedItems);
+    }, [filteredItems]);
     
     const handleCardClick = (item: MediaCardProps) => {
         console.log('Clicked media item:', item);
