@@ -216,7 +216,7 @@ const EloComparison: React.FC<EloComparisonProps> = ({
         console.log('Overlay display time complete, loading next pair');
         setRatingOverlays(null);
         loadPair();
-      }, 3000); // 3 seconds
+      }, 1250); // 2 seconds
     } catch (err: any) {
       console.error('Error updating ratings:', err);
       console.error('Error details:', {
@@ -270,7 +270,7 @@ const EloComparison: React.FC<EloComparisonProps> = ({
         console.log('Overlay display time complete, loading next pair');
         setRatingOverlays(null);
         loadPair();
-      }, 3000); // 3 seconds
+      }, 1250); // 2 seconds
     } catch (err: any) {
       console.error('Error updating ratings for draw:', err);
       console.error('Error details:', {
