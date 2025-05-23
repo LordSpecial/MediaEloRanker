@@ -791,5 +791,118 @@ export const eloService = {
       console.error('Error getting top ranked items:', error);
       throw error;
     }
+  },
+
+  /**
+   * Reset all ELO ratings and parameters for a user
+   * This will reset all library items to their default ELO values and reset total comparisons in metadata
+   * @param userId The user ID to reset ELO data for
+   */
+  async resetEloSystem(userId: string) {
+    try {
+      console.log(`===== resetEloSystem START for user ${userId} =====`);
+      
+      // 1. Get all library items for the user
+      const libraryRef = collection(db, `users/${userId}/library`);
+      const librarySnapshot = await getDocs(libraryRef);
+      
+      if (librarySnapshot.empty) {
+        console.log('No library items found to reset');
+        return {
+          success: true,
+          message: 'No library items found to reset',
+          itemsReset: 0
+        };
+      }
+      
+      // Process in batches to avoid hitting write limits
+      const batchSize = 500;
+      const batches = [];
+      
+      let currentBatch = writeBatch(db);
+      let operationCount = 0;
+      let totalOperations = 0;
+      
+      librarySnapshot.forEach(doc => {
+        currentBatch.update(doc.ref, {
+          globalEloScore: DEFAULT_RATING,
+          globalEloMatches: 0,
+          categoryEloScore: DEFAULT_RATING,
+          categoryEloMatches: 0,
+          lastUpdated: serverTimestamp(),
+          eloRD: DEFAULT_RD,
+          eloVolatility: DEFAULT_RD / 400,
+          provisional: true
+        });
+        
+        operationCount++;
+        totalOperations++;
+        
+        // Create a new batch when this one is full
+        if (operationCount >= batchSize) {
+          batches.push(currentBatch);
+          currentBatch = writeBatch(db);
+          operationCount = 0;
+        }
+      });
+      
+      // Push the last batch if it has operations
+      if (operationCount > 0) {
+        batches.push(currentBatch);
+      }
+      
+      // 2. Reset ELO metadata counters
+      const metadataRef = doc(db, 'eloSystem', 'metadata');
+      const metadataSnap = await getDoc(metadataRef);
+      
+      // Create one more batch for metadata update
+      const metadataBatch = writeBatch(db);
+      
+      if (metadataSnap.exists()) {
+        metadataBatch.update(metadataRef, {
+          totalComparisons: 0,
+          updatedAt: serverTimestamp()
+        });
+      }
+      
+      // 3. Clear all recent comparisons
+      try {
+        const comparisonsRef = collection(db, `users/${userId}/recentComparisons`);
+        const comparisonsSnap = await getDocs(comparisonsRef);
+        
+        if (!comparisonsSnap.empty) {
+          const comparisonsBatch = writeBatch(db);
+          comparisonsSnap.forEach(doc => {
+            comparisonsBatch.delete(doc.ref);
+          });
+          batches.push(comparisonsBatch);
+        }
+      } catch (error) {
+        console.log('Error clearing recent comparisons, but continuing with reset:', error);
+      }
+      
+      // Commit all batches including the metadata batch
+      batches.push(metadataBatch);
+      
+      // Start committing all batches
+      console.log(`Committing ${batches.length} batches to reset ${totalOperations} library items`);
+      await Promise.all(batches.map(batch => batch.commit()));
+      
+      console.log(`ELO ratings reset for ${totalOperations} library items`);
+      console.log(`===== resetEloSystem END =====`);
+      
+      return {
+        success: true,
+        message: `Successfully reset ELO ratings for ${totalOperations} library items`,
+        itemsReset: totalOperations
+      };
+    } catch (error: any) {
+      console.error('Error resetting ELO system:', error);
+      return {
+        success: false,
+        message: `Error resetting ELO system: ${error.message || 'Unknown error'}`,
+        itemsReset: 0
+      };
+    }
   }
 }; 

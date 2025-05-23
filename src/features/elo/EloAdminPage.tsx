@@ -16,6 +16,8 @@ const EloAdminPage: React.FC = () => {
   const [deletingTest, setDeletingTest] = useState(false);
   const [migratingData, setMigratingData] = useState(false);
   const [cleaningOrphans, setCleaningOrphans] = useState(false);
+  const [resettingElo, setResettingElo] = useState(false);
+  const [showResetConfirmation, setShowResetConfirmation] = useState(false);
 
   useEffect(() => {
     fetchEloMetadata();
@@ -285,6 +287,67 @@ const EloAdminPage: React.FC = () => {
     }
   };
 
+  // Function to handle showing the reset confirmation dialog
+  const handleShowResetConfirmation = () => {
+    setShowResetConfirmation(true);
+  };
+
+  // Function to reset the entire ELO system for the user
+  const handleResetEloSystem = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "You must be logged in to reset the ELO system",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setResettingElo(true);
+    setResult(null);
+    setShowResetConfirmation(false);
+    
+    try {
+      // Call the resetEloSystem function from eloService
+      const resetResult = await eloService.resetEloSystem(user.uid);
+      
+      setResult({
+        success: resetResult.success,
+        message: resetResult.message
+      });
+      
+      if (resetResult.success) {
+        toast({
+          title: "ELO System Reset",
+          description: resetResult.message
+        });
+        
+        // Refresh metadata after reset
+        await fetchEloMetadata();
+      } else {
+        toast({
+          title: "Reset Failed",
+          description: resetResult.message,
+          variant: "destructive"
+        });
+      }
+    } catch (error: any) {
+      console.error('Error resetting ELO system:', error);
+      setResult({
+        success: false,
+        message: `Error resetting ELO system: ${error.message || 'Unknown error'}`
+      });
+      
+      toast({
+        title: "Reset Failed",
+        description: error.message || "An error occurred during the reset operation",
+        variant: "destructive"
+      });
+    } finally {
+      setResettingElo(false);
+    }
+  };
+
   if (!user) {
     return (
       <div className="container mx-auto p-6">
@@ -401,6 +464,18 @@ const EloAdminPage: React.FC = () => {
           >
             {cleaningOrphans ? 'Cleaning...' : 'Clean Orphaned Library Items'}
           </button>
+
+          <button
+            onClick={handleShowResetConfirmation}
+            disabled={resettingElo}
+            className={`px-4 py-2 rounded-md ${
+              resettingElo
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-yellow-600 hover:bg-yellow-700 text-white'
+            }`}
+          >
+            {resettingElo ? 'Resetting...' : 'Reset ELO System'}
+          </button>
         </div>
         
         <div className="space-y-2">
@@ -410,8 +485,46 @@ const EloAdminPage: React.FC = () => {
           <p className="text-sm text-gray-600">
             <span className="font-semibold">Clean Orphaned Library Items:</span> Deletes library items that reference media IDs which no longer exist in the mediaMetadata collection.
           </p>
+          <p className="text-sm text-gray-600">
+            <span className="font-semibold">Reset ELO System:</span> Resets all ELO ratings to default values (1500), clears comparison counts, and resets metadata. All ranking progress will be lost.
+          </p>
         </div>
       </div>
+      
+      {/* Reset Confirmation Dialog */}
+      {showResetConfirmation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
+            <h3 className="text-xl font-bold text-red-600 mb-4">⚠️ Confirm ELO System Reset</h3>
+            <p className="mb-4">
+              Are you sure you want to reset the entire ELO rating system? This action will:
+            </p>
+            <ul className="list-disc pl-5 mb-4 text-gray-700">
+              <li>Reset all media ratings to their default value (1500)</li>
+              <li>Clear all comparison counts and history</li>
+              <li>Set all items back to provisional status</li>
+              <li>Reset the system-wide metadata counters</li>
+            </ul>
+            <p className="font-bold mb-6 text-red-600">
+              This action cannot be undone!
+            </p>
+            <div className="flex justify-end space-x-4">
+              <button
+                onClick={() => setShowResetConfirmation(false)}
+                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleResetEloSystem}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+              >
+                Yes, Reset Everything
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* System Initialization */}
       <div className="bg-white shadow-md rounded-lg p-6 mb-6">
