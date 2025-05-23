@@ -361,7 +361,7 @@ const EloComparison: React.FC<EloComparisonProps> = ({
             </div>
           )}
         </div>
-        <div className="p-6 bg-white rounded-lg shadow-md">
+        <div className="p-6 bg-gradient-to-br from-gray-800 via-gray-900 to-gray-800 rounded-lg shadow-lg border border-gray-700 text-gray-200">
           <h2 className="text-xl font-bold mb-6 text-center">Which do you prefer?</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 min-h-[200px]">
             {(error || items.length < 2) ? (
