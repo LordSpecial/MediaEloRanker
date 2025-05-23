@@ -42,6 +42,15 @@ const EloComparison: React.FC<EloComparisonProps> = ({
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [mediaDetails, setMediaDetails] = useState<Record<string, any>>({});
+  // New state for showing rating changes as overlays
+  const [ratingOverlays, setRatingOverlays] = useState<{
+    winnerId?: string;
+    loserId?: string;
+    winnerChange?: number;
+    loserChange?: number;
+    winnerNewRating?: number;
+    loserNewRating?: number;
+  } | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -184,12 +193,30 @@ const EloComparison: React.FC<EloComparisonProps> = ({
       const updateResult = await eloService.updateRatings(user.uid, winnerId, loserId);
       console.log('Rating update successful, result:', updateResult);
       
+      // Show rating changes as overlays instead of full result screen
+      setRatingOverlays({
+        winnerId: updateResult.winner.id,
+        loserId: updateResult.loser.id,
+        winnerChange: updateResult.winner.ratingChange,
+        loserChange: updateResult.loser.ratingChange,
+        winnerNewRating: updateResult.winner.newRating,
+        loserNewRating: updateResult.loser.newRating
+      });
+      
+      // Store result for callback
       setResult(updateResult);
       
       if (onComparisonComplete) {
         console.log('Calling onComparisonComplete callback with result');
         onComparisonComplete(updateResult);
       }
+      
+      // Set timeout to load next pair after overlay display
+      setTimeout(() => {
+        console.log('Overlay display time complete, loading next pair');
+        setRatingOverlays(null);
+        loadPair();
+      }, 3000); // 3 seconds
     } catch (err: any) {
       console.error('Error updating ratings:', err);
       console.error('Error details:', {
@@ -220,12 +247,30 @@ const EloComparison: React.FC<EloComparisonProps> = ({
       const updateResult = await eloService.updateRatings(user.uid, id1, id2, true); // true indicates a draw
       console.log('Draw update successful, result:', updateResult);
       
+      // Show rating changes as overlays instead of full result screen
+      setRatingOverlays({
+        winnerId: updateResult.winner.id,
+        loserId: updateResult.loser.id,
+        winnerChange: updateResult.winner.ratingChange,
+        loserChange: updateResult.loser.ratingChange,
+        winnerNewRating: updateResult.winner.newRating,
+        loserNewRating: updateResult.loser.newRating
+      });
+      
+      // Store result for callback
       setResult(updateResult);
       
       if (onComparisonComplete) {
         console.log('Calling onComparisonComplete callback with result');
         onComparisonComplete(updateResult);
       }
+      
+      // Set timeout to load next pair after overlay display
+      setTimeout(() => {
+        console.log('Overlay display time complete, loading next pair');
+        setRatingOverlays(null);
+        loadPair();
+      }, 3000); // 3 seconds
     } catch (err: any) {
       console.error('Error updating ratings for draw:', err);
       console.error('Error details:', {
@@ -243,6 +288,7 @@ const EloComparison: React.FC<EloComparisonProps> = ({
   const handleNextPair = () => {
     console.log('Loading next pair');
     setResult(null);
+    setRatingOverlays(null);
     loadPair();
   };
 
@@ -297,46 +343,6 @@ const EloComparison: React.FC<EloComparisonProps> = ({
     );
   }
   
-  if (result) {
-    console.log('Rendering result state with:', result);
-    return (
-      <div className="text-center p-6 bg-white rounded-lg shadow-md">
-        <h2 className="text-xl font-bold mb-6">Comparison Result</h2>
-        
-        <div className="grid grid-cols-2 gap-6 mb-6">
-          <div className="p-4 border border-gray-200 rounded-md bg-gray-50">
-            <h3 className="font-semibold text-lg mb-2">
-              {mediaDetails[result.winner.id]?.title || 'Winner'}
-            </h3>
-            <p className="mb-1 text-gray-600">Previous rating: {result.winner.oldRating.toFixed(0)}</p>
-            <p className="mb-1 text-gray-600">New rating: {result.winner.newRating.toFixed(0)}</p>
-            <p className={result.winner.ratingChange >= 0 ? "text-green-600 font-bold" : "text-red-600 font-bold"}>
-              Change: {result.winner.ratingChange > 0 ? "+" : ""}{result.winner.ratingChange.toFixed(0)}
-            </p>
-          </div>
-
-          <div className="p-4 border border-gray-200 rounded-md bg-gray-50">
-            <h3 className="font-semibold text-lg mb-2">
-              {mediaDetails[result.loser.id]?.title || 'Loser'}
-            </h3>
-            <p className="mb-1 text-gray-600">Previous rating: {result.loser.oldRating.toFixed(0)}</p>
-            <p className="mb-1 text-gray-600">New rating: {result.loser.newRating.toFixed(0)}</p>
-            <p className={result.loser.ratingChange >= 0 ? "text-green-600 font-bold" : "text-red-600 font-bold"}>
-              Change: {result.loser.ratingChange > 0 ? "+" : ""}{result.loser.ratingChange.toFixed(0)}
-            </p>
-          </div>
-        </div>
-
-        <button
-          onClick={handleNextPair}
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded w-full md:w-auto"
-        >
-          Next Comparison
-        </button>
-      </div>
-    );
-  }
-
   console.log('Rendering comparison state with items:', items);
   return (
     <div className="p-6 bg-white rounded-lg shadow-md">
@@ -345,19 +351,44 @@ const EloComparison: React.FC<EloComparisonProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {items.map((item, index) => {
           const mediaDetail = mediaDetails[item.mediaId] || {};
+          const isItemWinner = ratingOverlays && ratingOverlays.winnerId === item.id;
+          const isItemLoser = ratingOverlays && ratingOverlays.loserId === item.id;
+          const showOverlay = isItemWinner || isItemLoser;
+          const ratingChange = isItemWinner ? ratingOverlays?.winnerChange : ratingOverlays?.loserChange;
+          const newRating = isItemWinner ? ratingOverlays?.winnerNewRating : ratingOverlays?.loserNewRating;
           
           return (
             <div key={item.id} className="flex flex-col items-center">
               <div className="relative w-full pb-[140%] mb-4">
                 {mediaDetail.imageUrl ? (
-                  <img
-                    src={mediaDetail.imageUrl}
-                    alt={mediaDetail.title || 'Media item'}
-                    className="absolute inset-0 w-full h-full object-cover rounded-md shadow-md"
-                  />
+                  <>
+                    <img
+                      src={mediaDetail.imageUrl}
+                      alt={mediaDetail.title || 'Media item'}
+                      className="absolute inset-0 w-full h-full object-cover rounded-md shadow-md"
+                    />
+                    {/* Rating change overlay */}
+                    {showOverlay && (
+                      <div className="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center text-white rounded-md">
+                        <p className="text-2xl font-bold mb-2">{newRating?.toFixed(0)}</p>
+                        <p className={`text-xl font-bold ${ratingChange && ratingChange >= 0 ? "text-green-400" : "text-red-400"}`}>
+                          {ratingChange && ratingChange > 0 ? "+" : ""}{ratingChange?.toFixed(0)}
+                        </p>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <div className="absolute inset-0 w-full h-full bg-gray-200 flex items-center justify-center rounded-md shadow-md">
                     <span className="text-gray-500">No Image</span>
+                    {/* Rating change overlay for items without images */}
+                    {showOverlay && (
+                      <div className="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center text-white rounded-md">
+                        <p className="text-2xl font-bold mb-2">{newRating?.toFixed(0)}</p>
+                        <p className={`text-xl font-bold ${ratingChange && ratingChange >= 0 ? "text-green-400" : "text-red-400"}`}>
+                          {ratingChange && ratingChange > 0 ? "+" : ""}{ratingChange?.toFixed(0)}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -376,6 +407,7 @@ const EloComparison: React.FC<EloComparisonProps> = ({
                   handleSelection(item.id, items[1-index].id);
                 }}
                 className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-2 w-full"
+                disabled={ratingOverlays !== null}
               >
                 Prefer This
               </button>
