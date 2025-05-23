@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, Compass, Award, Library, User, Film, Tv, Music, PlayCircle, LogOut, LucideIcon, Shield, Settings } from 'lucide-react';
+import { Home, Compass, Award, Library, User, Film, Tv, Music, PlayCircle, LogOut, LucideIcon, Shield, Settings, Menu, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface NavDropdownItemProps {
@@ -26,6 +26,7 @@ const NavDropdownItem = ({ icon: Icon, text, to }: NavDropdownItemProps) => {
 const Navbar = () => {
     const [isDiscoverOpen, setIsDiscoverOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const { logout, user } = useAuth();
     const navigate = useNavigate();
 
@@ -49,46 +50,152 @@ const Navbar = () => {
                         <span className="text-xl font-bold text-white">MediaRank</span>
                     </div>
 
-                    <div className="hidden md:block">
-                        <div className="flex items-center space-x-8">
+                    {/* Hamburger for mobile */}
+                    <button
+                        className="md:hidden p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+                        onClick={() => setMobileMenuOpen((v) => !v)}
+                    >
+                        {mobileMenuOpen ? <X size={28} className="text-white" /> : <Menu size={28} className="text-white" />}
+                    </button>
+
+                    {/* Desktop nav links */}
+                    <div className="hidden md:flex flex-row items-center gap-8">
+                        <NavLink
+                            to="/home"
+                            className={({ isActive }) =>
+                                `flex items-center space-x-2 text-gray-300 hover:text-white transition-colors ${
+                                    isActive ? 'text-white' : ''
+                                }`
+                            }
+                        >
+                            <Home size={20} />
+                            <span>Home</span>
+                        </NavLink>
+                        {/* Discover Dropdown */}
+                        <div
+                            className="relative"
+                            onMouseEnter={() => setIsDiscoverOpen(true)}
+                            onMouseLeave={() => setIsDiscoverOpen(false)}
+                        >
                             <NavLink
-                                to="/home"
+                                to="/discover"
                                 className={({ isActive }) =>
                                     `flex items-center space-x-2 text-gray-300 hover:text-white transition-colors ${
                                         isActive ? 'text-white' : ''
                                     }`
                                 }
                             >
-                                <Home size={20} />
-                                <span>Home</span>
+                                <Compass size={20} />
+                                <span>Discover</span>
                             </NavLink>
-
-                            {/* Discover Dropdown */}
+                            {/* Dropdown Menu */}
                             <div
-                                className="relative"
-                                onMouseEnter={() => setIsDiscoverOpen(true)}
-                                onMouseLeave={() => setIsDiscoverOpen(false)}
+                                className={`absolute left-0 w-48 mt-2 py-2 bg-gray-800 rounded-md shadow-lg transition-all duration-200 ${
+                                    isDiscoverOpen
+                                        ? 'opacity-100 translate-y-0 visible'
+                                        : 'opacity-0 -translate-y-2 invisible'
+                                }`}
                             >
-                                <NavLink
-                                    to="/discover"
-                                    className={({ isActive }) =>
-                                        `flex items-center space-x-2 text-gray-300 hover:text-white transition-colors ${
-                                            isActive ? 'text-white' : ''
-                                        }`
-                                    }
-                                >
-                                    <Compass size={20} />
-                                    <span>Discover</span>
-                                </NavLink>
-
-                                {/* Dropdown Menu */}
+                                {mediaCategories.map((category, index) => (
+                                    <NavDropdownItem
+                                        key={index}
+                                        icon={category.icon}
+                                        text={category.text}
+                                        to={category.path}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                        <NavLink
+                            to="/rank"
+                            className={({ isActive }) =>
+                                `flex items-center space-x-2 text-gray-300 hover:text-white transition-colors ${
+                                    isActive ? 'text-white' : ''
+                                }`
+                            }
+                        >
+                            <Award size={20} />
+                            <span>Compare</span>
+                        </NavLink>
+                        <NavLink
+                            to="/library"
+                            className={({ isActive }) =>
+                                `flex items-center space-x-2 text-gray-300 hover:text-white transition-colors ${
+                                    isActive ? 'text-white' : ''
+                                }`
+                            }
+                        >
+                            <Library size={20} />
+                            <span>Library</span>
+                        </NavLink>
+                        {/* Profile Menu */}
+                        <div
+                            className="relative"
+                            onMouseEnter={() => setIsProfileOpen(true)}
+                            onMouseLeave={() => setIsProfileOpen(false)}
+                        >
+                            <NavLink
+                                to="/profile"
+                                className={({ isActive }) =>
+                                    `flex items-center space-x-2 text-gray-300 hover:text-white transition-colors ${
+                                        isActive ? 'text-white' : ''
+                                    }`
+                                }
+                            >
+                                <User size={20} />
+                                <span>{user?.displayName || 'Profile'}</span>
+                            </NavLink>
+                            {/* Profile Dropdown */}
+                            <div
+                                className={`absolute right-0 w-48 mt-2 py-2 bg-gray-800 rounded-md shadow-lg transition-all duration-200 ${
+                                    isProfileOpen
+                                        ? 'opacity-100 translate-y-0 visible'
+                                        : 'opacity-0 -translate-y-2 invisible'
+                                }`}
+                            >
                                 <div
-                                    className={`absolute left-0 w-48 mt-2 py-2 bg-gray-800 rounded-md shadow-lg transition-all duration-200 ${
-                                        isDiscoverOpen
-                                            ? 'opacity-100 translate-y-0 visible'
-                                            : 'opacity-0 -translate-y-2 invisible'
-                                    }`}
+                                    onClick={handleLogout}
+                                    className="flex items-center space-x-2 px-4 py-3 hover:bg-gray-700 cursor-pointer transition-colors text-red-400 hover:text-red-300"
                                 >
+                                    <LogOut size={18} />
+                                    <span>Logout</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {/* Mobile menu overlay */}
+            {mobileMenuOpen && (
+                <div className="md:hidden fixed top-16 left-0 w-full bg-gray-900 border-b border-gray-800 z-50 shadow-lg animate-fade-in">
+                    <div className="flex flex-col gap-2 p-4">
+                        <NavLink
+                            to="/home"
+                            className={({ isActive }) =>
+                                `flex items-center space-x-2 text-gray-300 hover:text-white transition-colors py-2 ${
+                                    isActive ? 'text-white' : ''
+                                }`
+                            }
+                            onClick={() => setMobileMenuOpen(false)}
+                        >
+                            <Home size={20} />
+                            <span>Home</span>
+                        </NavLink>
+                        {/* Discover Dropdown (collapsible on mobile) */}
+                        <div>
+                            <button
+                                className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors py-2 w-full"
+                                onClick={() => setIsDiscoverOpen((v) => !v)}
+                                aria-expanded={isDiscoverOpen}
+                                aria-controls="mobile-discover-menu"
+                            >
+                                <Compass size={20} />
+                                <span>Discover</span>
+                                <span className="ml-auto">{isDiscoverOpen ? '▲' : '▼'}</span>
+                            </button>
+                            {isDiscoverOpen && (
+                                <div id="mobile-discover-menu" className="pl-6 mt-1">
                                     {mediaCategories.map((category, index) => (
                                         <NavDropdownItem
                                             key={index}
@@ -98,71 +205,59 @@ const Navbar = () => {
                                         />
                                     ))}
                                 </div>
-                            </div>
-
-                            <NavLink
-                                to="/rank"
-                                className={({ isActive }) =>
-                                    `flex items-center space-x-2 text-gray-300 hover:text-white transition-colors ${
-                                        isActive ? 'text-white' : ''
-                                    }`
-                                }
+                            )}
+                        </div>
+                        <NavLink
+                            to="/rank"
+                            className={({ isActive }) =>
+                                `flex items-center space-x-2 text-gray-300 hover:text-white transition-colors py-2 ${
+                                    isActive ? 'text-white' : ''
+                                }`
+                            }
+                            onClick={() => setMobileMenuOpen(false)}
+                        >
+                            <Award size={20} />
+                            <span>Compare</span>
+                        </NavLink>
+                        <NavLink
+                            to="/library"
+                            className={({ isActive }) =>
+                                `flex items-center space-x-2 text-gray-300 hover:text-white transition-colors py-2 ${
+                                    isActive ? 'text-white' : ''
+                                }`
+                            }
+                            onClick={() => setMobileMenuOpen(false)}
+                        >
+                            <Library size={20} />
+                            <span>Library</span>
+                        </NavLink>
+                        {/* Profile Menu (collapsible on mobile) */}
+                        <div>
+                            <button
+                                className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors py-2 w-full"
+                                onClick={() => setIsProfileOpen((v) => !v)}
+                                aria-expanded={isProfileOpen}
+                                aria-controls="mobile-profile-menu"
                             >
-                                <Award size={20} />
-                                <span>Compare</span>
-                            </NavLink>
-
-                            <NavLink
-                                to="/library"
-                                className={({ isActive }) =>
-                                    `flex items-center space-x-2 text-gray-300 hover:text-white transition-colors ${
-                                        isActive ? 'text-white' : ''
-                                    }`
-                                }
-                            >
-                                <Library size={20} />
-                                <span>Library</span>
-                            </NavLink>
-
-                            {/* Profile Menu */}
-                            <div
-                                className="relative"
-                                onMouseEnter={() => setIsProfileOpen(true)}
-                                onMouseLeave={() => setIsProfileOpen(false)}
-                            >
-                                <NavLink
-                                    to="/profile"
-                                    className={({ isActive }) =>
-                                        `flex items-center space-x-2 text-gray-300 hover:text-white transition-colors ${
-                                            isActive ? 'text-white' : ''
-                                        }`
-                                    }
-                                >
-                                    <User size={20} />
-                                    <span>{user?.displayName || 'Profile'}</span>
-                                </NavLink>
-
-                                {/* Profile Dropdown */}
-                                <div
-                                    className={`absolute right-0 w-48 mt-2 py-2 bg-gray-800 rounded-md shadow-lg transition-all duration-200 ${
-                                        isProfileOpen
-                                            ? 'opacity-100 translate-y-0 visible'
-                                            : 'opacity-0 -translate-y-2 invisible'
-                                    }`}
-                                >
+                                <User size={20} />
+                                <span>{user?.displayName || 'Profile'}</span>
+                                <span className="ml-auto">{isProfileOpen ? '▲' : '▼'}</span>
+                            </button>
+                            {isProfileOpen && (
+                                <div id="mobile-profile-menu" className="pl-6 mt-1">
                                     <div
-                                        onClick={handleLogout}
+                                        onClick={() => { setMobileMenuOpen(false); handleLogout(); }}
                                         className="flex items-center space-x-2 px-4 py-3 hover:bg-gray-700 cursor-pointer transition-colors text-red-400 hover:text-red-300"
                                     >
                                         <LogOut size={18} />
                                         <span>Logout</span>
                                     </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
         </nav>
     );
 };

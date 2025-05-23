@@ -637,7 +637,8 @@ const EloComparison: React.FC<EloComparisonProps> = ({
         </div>
         <div className="p-6 bg-gradient-to-br from-gray-800 via-gray-900 to-gray-800 rounded-lg shadow-lg border border-gray-700 text-gray-200">
           <h2 className="text-xl font-bold mb-6 text-center">Which do you prefer?</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 min-h-[200px]">
+          {/* Mobile formatting: always two columns, improved spacing/touch targets */}
+          <div className="grid grid-cols-2 gap-2 sm:gap-4 min-h-[200px] max-w-full">
             {(error || items.length < 2) ? (
               <div className="col-span-2 flex flex-col items-center justify-center py-8">
                 <p className="text-red-600 font-semibold mb-4">
@@ -652,7 +653,6 @@ const EloComparison: React.FC<EloComparisonProps> = ({
               </div>
             ) : (
               selectedMethod === 'compareSingle' && anchorItem ? (
-                // Show anchor as first card, challenger as second
                 items.map((item, index) => {
                   const mediaDetail = mediaDetails[item.mediaId] || {};
                   const isItemWinner = ratingOverlays && ratingOverlays.winnerId === item.id;
@@ -661,8 +661,17 @@ const EloComparison: React.FC<EloComparisonProps> = ({
                   const ratingChange = isItemWinner ? ratingOverlays?.winnerChange : ratingOverlays?.loserChange;
                   const newRating = isItemWinner ? ratingOverlays?.winnerNewRating : ratingOverlays?.loserNewRating;
                   return (
-                    <div key={item.id} className="flex flex-col items-center">
-                      <div className="relative w-full pb-[140%] mb-4">
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        handleSelection(item.id, items[1-index].id);
+                      }}
+                      className={`flex flex-col items-center w-full bg-gray-800 rounded-lg shadow-md p-1 sm:p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all relative ${ratingOverlays !== null ? 'opacity-70 pointer-events-none' : 'active:bg-gray-700'}`}
+                      style={{ minHeight: '100%', minWidth: 0 }}
+                      disabled={ratingOverlays !== null}
+                      aria-label={`Prefer ${mediaDetail.title || `Item ${item.mediaId}`}`}
+                    >
+                      <div className="relative w-full pb-[140%] mb-2 sm:mb-4">
                         {mediaDetail.imageUrl ? (
                           <>
                             <img
@@ -674,9 +683,7 @@ const EloComparison: React.FC<EloComparisonProps> = ({
                             {showOverlay && (
                               <div className="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center text-white rounded-md">
                                 <p className="text-2xl font-bold mb-2">{newRating?.toFixed(0)}</p>
-                                <p className={`text-xl font-bold ${ratingChange && ratingChange >= 0 ? "text-green-400" : "text-red-400"}`}>
-                                  {ratingChange && ratingChange > 0 ? "+" : ""}{ratingChange?.toFixed(0)}
-                                </p>
+                                <p className={`text-xl font-bold ${ratingChange && ratingChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>{ratingChange && ratingChange > 0 ? '+' : ''}{ratingChange?.toFixed(0)}</p>
                               </div>
                             )}
                           </>
@@ -687,40 +694,29 @@ const EloComparison: React.FC<EloComparisonProps> = ({
                             {showOverlay && (
                               <div className="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center text-white rounded-md">
                                 <p className="text-2xl font-bold mb-2">{newRating?.toFixed(0)}</p>
-                                <p className={`text-xl font-bold ${ratingChange && ratingChange >= 0 ? "text-green-400" : "text-red-400"}`}>
-                                  {ratingChange && ratingChange > 0 ? "+" : ""}{ratingChange?.toFixed(0)}
-                                </p>
+                                <p className={`text-xl font-bold ${ratingChange && ratingChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>{ratingChange && ratingChange > 0 ? '+' : ''}{ratingChange?.toFixed(0)}</p>
                               </div>
                             )}
                           </div>
                         )}
                       </div>
-                      <h3 className="text-lg font-semibold mb-1">{mediaDetail.title || `Item ${item.mediaId}`}</h3>
-                      <p className="text-sm text-gray-500 mb-4">{mediaDetail.releaseYear || item.type}</p>
-                      <div className="text-sm text-gray-500 mb-3 text-center">
+                      <h3 className="text-base sm:text-lg font-semibold mb-1 text-center break-words">{mediaDetail.title || `Item ${item.mediaId}`}</h3>
+                      <p className="text-xs sm:text-sm text-gray-500 mb-2 sm:mb-4">{mediaDetail.releaseYear || item.type}</p>
+                      <div className="text-xs sm:text-sm text-gray-500 mb-2 sm:mb-3 text-center">
                         <p>Current Rating: {item.globalEloScore?.toFixed(0) || 1500}</p>
                         <p>Comparisons: {item.globalEloMatches || 0}</p>
                         {item._missingElo && (
                           <span className="text-yellow-400 font-semibold">No ELO data yet for this item</span>
                         )}
                       </div>
-                      <button
-                        onClick={() => {
-                          handleSelection(item.id, items[1-index].id);
-                        }}
-                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-2 w-full"
-                        disabled={ratingOverlays !== null}
-                      >
-                        Prefer This
-                      </button>
-                    </div>
+                    </button>
                   );
                 })
               ) : selectedMethod === 'compareSingle' && !anchorItem ? (
                 // Show blank card for anchor, nothing for challenger
                 <>
                   <div className="flex flex-col items-center">
-                    <div className="relative w-full pb-[140%] mb-4">
+                    <div className="relative w-full pb-[140%] mb-2 sm:mb-4">
                       <div className="absolute inset-0 w-full h-full bg-gray-900 flex items-center justify-center rounded-md shadow-md border-2 border-dashed border-gray-700">
                         <span className="text-gray-500">Select an anchor to begin</span>
                       </div>
@@ -738,8 +734,17 @@ const EloComparison: React.FC<EloComparisonProps> = ({
                   const ratingChange = isItemWinner ? ratingOverlays?.winnerChange : ratingOverlays?.loserChange;
                   const newRating = isItemWinner ? ratingOverlays?.winnerNewRating : ratingOverlays?.loserNewRating;
                   return (
-                    <div key={item.id} className="flex flex-col items-center">
-                      <div className="relative w-full pb-[140%] mb-4">
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        handleSelection(item.id, items[1-index].id);
+                      }}
+                      className={`flex flex-col items-center w-full bg-gray-800 rounded-lg shadow-md p-1 sm:p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all relative ${ratingOverlays !== null ? 'opacity-70 pointer-events-none' : 'active:bg-gray-700'}`}
+                      style={{ minHeight: '100%', minWidth: 0 }}
+                      disabled={ratingOverlays !== null}
+                      aria-label={`Prefer ${mediaDetail.title || `Item ${item.mediaId}`}`}
+                    >
+                      <div className="relative w-full pb-[140%] mb-2 sm:mb-4">
                         {mediaDetail.imageUrl ? (
                           <>
                             <img
@@ -751,9 +756,7 @@ const EloComparison: React.FC<EloComparisonProps> = ({
                             {showOverlay && (
                               <div className="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center text-white rounded-md">
                                 <p className="text-2xl font-bold mb-2">{newRating?.toFixed(0)}</p>
-                                <p className={`text-xl font-bold ${ratingChange && ratingChange >= 0 ? "text-green-400" : "text-red-400"}`}>
-                                  {ratingChange && ratingChange > 0 ? "+" : ""}{ratingChange?.toFixed(0)}
-                                </p>
+                                <p className={`text-xl font-bold ${ratingChange && ratingChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>{ratingChange && ratingChange > 0 ? '+' : ''}{ratingChange?.toFixed(0)}</p>
                               </div>
                             )}
                           </>
@@ -764,33 +767,22 @@ const EloComparison: React.FC<EloComparisonProps> = ({
                             {showOverlay && (
                               <div className="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center text-white rounded-md">
                                 <p className="text-2xl font-bold mb-2">{newRating?.toFixed(0)}</p>
-                                <p className={`text-xl font-bold ${ratingChange && ratingChange >= 0 ? "text-green-400" : "text-red-400"}`}>
-                                  {ratingChange && ratingChange > 0 ? "+" : ""}{ratingChange?.toFixed(0)}
-                                </p>
+                                <p className={`text-xl font-bold ${ratingChange && ratingChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>{ratingChange && ratingChange > 0 ? '+' : ''}{ratingChange?.toFixed(0)}</p>
                               </div>
                             )}
                           </div>
                         )}
                       </div>
-                      <h3 className="text-lg font-semibold mb-1">{mediaDetail.title || `Item ${item.mediaId}`}</h3>
-                      <p className="text-sm text-gray-500 mb-4">{mediaDetail.releaseYear || item.type}</p>
-                      <div className="text-sm text-gray-500 mb-3 text-center">
+                      <h3 className="text-base sm:text-lg font-semibold mb-1 text-center break-words">{mediaDetail.title || `Item ${item.mediaId}`}</h3>
+                      <p className="text-xs sm:text-sm text-gray-500 mb-2 sm:mb-4">{mediaDetail.releaseYear || item.type}</p>
+                      <div className="text-xs sm:text-sm text-gray-500 mb-2 sm:mb-3 text-center">
                         <p>Current Rating: {item.globalEloScore?.toFixed(0) || 1500}</p>
                         <p>Comparisons: {item.globalEloMatches || 0}</p>
                         {item._missingElo && (
                           <span className="text-yellow-400 font-semibold">No ELO data yet for this item</span>
                         )}
                       </div>
-                      <button
-                        onClick={() => {
-                          handleSelection(item.id, items[1-index].id);
-                        }}
-                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-2 w-full"
-                        disabled={ratingOverlays !== null}
-                      >
-                        Prefer This
-                      </button>
-                    </div>
+                    </button>
                   );
                 })
               )
